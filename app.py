@@ -14,7 +14,7 @@ st.markdown("""
         color: #E0E0E0;
     }
     h1, h2, h3 {
-        color: #D4AF37 !important; /* Золотой цвет для заголовков */
+        color: #D4AF37 !important;
     }
     .stButton>button {
         background-color: #D4AF37;
@@ -54,66 +54,74 @@ load_font()
 st.sidebar.markdown("## ⚙️ Настройки системы")
 api_key = st.sidebar.text_input("Введите Google Gemini API Key", type="password")
 st.sidebar.markdown("---")
-st.sidebar.info("Система использует модель **Gemini 1.5 Flash** для обеспечения высокой скорости и безупречной юридической логики.")
 
 # 4. Основная логика приложения
 if api_key:
     try:
         genai.configure(api_key=api_key)
-        model = genai.GenerativeModel('gemini-1.5-flash')
         
-        st.markdown("---")
-        object_name = st.text_input("Название или точный адрес объекта:", placeholder="Например: Офис 150 кв.м., БЦ 'Port Baku'")
-        user_input = st.text_area("Детальное описание состояния (дефекты, оборудование, инвентарь):", height=150, 
-                                  placeholder="Перечислите все недостатки, состояние потолков, полов, техники...")
+        # --- АВТОМАТИЧЕСКИЙ ПОИСК РАБОЧЕЙ МОДЕЛИ (ЗАЩИТА ОТ 404) ---
+        valid_models = [m.name for m in genai.list_models() if 'generateContent' in m.supported_generation_methods]
         
-        if st.button("Сформировать Официальный Акт"):
-            if object_name and user_input:
-                with st.spinner('ИИ-Аудитор формирует юридический документ...'):
-                    # Строгий системный промпт
-                    prompt = f"""Ты — элитный корпоративный юрист и аудитор активов. 
-                    Составь строгий Акт приема-передачи (аудита) для объекта: '{object_name}'.
-                    На основе этих данных: {user_input}
-                    
-                    Структура документа:
-                    1. Заголовок (Акт технического аудита и приема-передачи).
-                    2. Преамбула (дата, стороны - оставь места для заполнения).
-                    3. Детальная таблица/список выявленных дефектов и состояния оборудования.
-                    4. Блок "Юридические последствия и риски" (ограничение ответственности передающей стороны).
-                    5. Места для подписей (Передал / Принял).
-                    
-                    Текст должен быть на профессиональном русском языке, без лишних эмоций."""
-                    
-                    response = model.generate_content(prompt)
-                    report_text = response.text
-                    
-                    st.success("✅ Акт успешно сформирован!")
-                    
-                    # Вывод на экран
-                    with st.expander("📄 Просмотр документа", expanded=True):
-                        st.markdown(report_text)
-                    
-                    # 5. Генерация идеального PDF
-                    pdf = FPDF()
-                    pdf.add_page()
-                    pdf.add_font("DejaVu", "", FONT_PATH, uni=True)
-                    pdf.set_font("DejaVu", size=11)
-                    
-                    # Очистка текста от Markdown символов (звездочек) для чистого PDF
-                    clean_text = report_text.replace('**', '').replace('*', '-')
-                    pdf.multi_cell(0, 8, text=clean_text)
-                    
-                    pdf_bytes = pdf.output()
-                    
-                    st.download_button(
-                        label="⬇️ Скачать документ в формате PDF",
-                        data=bytes(pdf_bytes),
-                        file_name="Asset_Audit_Report.pdf",
-                        mime="application/pdf"
-                    )
-            else:
-                st.warning("⚠️ Пожалуйста, заполните оба поля: название объекта и его описание.")
+        if not valid_models:
+            st.error("❌ Ваш API ключ не имеет доступа к текстовым моделям.")
+        else:
+            # Берем первую доступную модель из списка и очищаем название от префикса 'models/'
+            actual_model_name = valid_models[0].replace("models/", "")
+            model = genai.GenerativeModel(actual_model_name)
+            
+            st.sidebar.success(f"✅ Система подключена!")
+            
+            st.markdown("---")
+            object_name = st.text_input("Название или точный адрес объекта:", placeholder="Например: Офис 150 кв.м., БЦ 'Port Baku'")
+            user_input = st.text_area("Детальное описание состояния (дефекты, оборудование, инвентарь):", height=150, 
+                                      placeholder="Перечислите все недостатки, состояние потолков, полов, техники...")
+            
+            if st.button("Сформировать Официальный Акт"):
+                if object_name and user_input:
+                    with st.spinner('ИИ-Аудитор формирует юридический документ...'):
+                        
+                        prompt = f"""Ты — элитный корпоративный юрист и аудитор активов. 
+                        Составь строгий Акт приема-передачи (аудита) для объекта: '{object_name}'.
+                        На основе этих данных: {user_input}
+                        
+                        Структура документа:
+                        1. Заголовок (Акт технического аудита и приема-передачи).
+                        2. Преамбула (дата, стороны - оставь места для заполнения).
+                        3. Детальная таблица/список выявленных дефектов и состояния оборудования.
+                        4. Блок "Юридические последствия и риски" (ограничение ответственности передающей стороны).
+                        5. Места для подписей (Передал / Принял).
+                        
+                        Текст должен быть на профессиональном русском языке, без лишних эмоций."""
+                        
+                        response = model.generate_content(prompt)
+                        report_text = response.text
+                        
+                        st.success("✅ Акт успешно сформирован!")
+                        
+                        with st.expander("📄 Просмотр документа", expanded=True):
+                            st.markdown(report_text)
+                        
+                        # 5. Генерация PDF
+                        pdf = FPDF()
+                        pdf.add_page()
+                        pdf.add_font("DejaVu", "", FONT_PATH, uni=True)
+                        pdf.set_font("DejaVu", size=11)
+                        
+                        clean_text = report_text.replace('**', '').replace('*', '-')
+                        pdf.multi_cell(0, 8, text=clean_text)
+                        
+                        pdf_bytes = pdf.output()
+                        
+                        st.download_button(
+                            label="⬇️ Скачать документ в формате PDF",
+                            data=bytes(pdf_bytes),
+                            file_name="Asset_Audit_Report.pdf",
+                            mime="application/pdf"
+                        )
+                else:
+                    st.warning("⚠️ Пожалуйста, заполните оба поля: название объекта и его описание.")
     except Exception as err:
-        st.error(f"❌ Критическая ошибка соединения: {err}. Проверьте правильность API ключа.")
+        st.error(f"❌ Системная ошибка: {err}. Проверьте правильность API ключа.")
 else:
     st.info("👈 Для начала работы введите ваш API ключ в меню слева.")
