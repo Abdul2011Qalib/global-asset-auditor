@@ -1,186 +1,331 @@
-import streamlit as st
-import pandas as pd
 import os
-import urllib.request
-from datetime import date
-from fpdf import FPDF
+import pandas as pd
 from PIL import Image
+import streamlit as st
+from fpdf import FPDF
 
-# ---------------------------------------------------------
-# 1. PAGE CONFIGURATION
-# ---------------------------------------------------------
+# Конфигурация страницы
 st.set_page_config(
     page_title="Global Asset Auditor",
     page_icon="🏢",
-    layout="wide"
+    layout="wide",
+    initial_sidebar_state="expanded",
 )
 
 st.title("🏢 Global Asset Auditor")
-st.caption("Платформа автоматизированного технического аудита и формирования актов")
+st.markdown(
+    "**Профессиональная платформа технического аудита и контроля коммерческих"
+    " активов**"
+)
 
-st.divider()
+# --- БОКОВАЯ ПАНЕЛЬ (ПАРАМЕТРЫ) ---
+st.sidebar.header("📁 Параметры акта")
 
-# ---------------------------------------------------------
-# 2. SIDEBAR CONFIGURATION
-# ---------------------------------------------------------
-st.sidebar.header("📋 Параметры акта")
+# Загрузка логотипа по умолчанию
+if os.path.exists("logo.png"):
+  st.sidebar.image("logo.png", use_container_width=True)
+else:
+  st.sidebar.warning("Логотип `logo.png` не обнаружен в репозитории.")
 
-st.sidebar.subheader("🖼️ Логотип компании")
-logo_file = st.sidebar.file_uploader("Загрузить логотип (PNG / JPG)", type=["png", "jpg", "jpeg"])
+st.sidebar.subheader("Инфо об объекте")
+act_num = st.sidebar.text_input(
+    "Номер акта", value="AUDIT-2026-01", placeholder="например: ACT-001"
+)
+audit_date = st.sidebar.date_input("Дата аудита")
+object_name = st.sidebar.text_input(
+    "Объект / Помещение",
+    value="",
+    placeholder="Например: Офис №101, Бизнес-центр",
+)
+object_address = st.sidebar.text_input(
+    "Адрес объекта", value="", placeholder="Например: ул. Низами 25, Баку"
+)
 
-st.sidebar.subheader("📌 Основная информация")
-act_num = st.sidebar.text_input("Номер акта", value="GS-BAK-1402")
-audit_date = st.sidebar.date_input("Дата аудита", value=date.today())
-object_name = st.sidebar.text_input("Объект", value="Офис №1402, Port Baku Tower")
-address = st.sidebar.text_input("Адрес", value="г. Баку, пр. Нефтяников 153")
+st.sidebar.subheader("Стороны комиссии")
+party_trans = st.sidebar.text_input(
+    "Передающая сторона",
+    value="",
+    placeholder="Например: ООО «Property Management»",
+)
+party_recv = st.sidebar.text_input(
+    "Принимающая сторона", value="", placeholder="Например: ООО «Client Tech»"
+)
+lead_auditor = st.sidebar.text_input(
+    "Главный эксперт-аудитор", value="", placeholder="ФИО эксперта"
+)
 
-st.sidebar.subheader("👥 Стороны")
-party_1 = st.sidebar.text_input("Передающая сторона", value="ООО «Pasha Real Estate»")
-party_1_rep = st.sidebar.text_input("Представитель 1", value="Гасанов Р. Э.")
+st.sidebar.subheader("Ресурсные показатели и ключи")
+meters_info = st.sidebar.text_input(
+    "Показатели счетчиков",
+    value="",
+    placeholder="Электроэнергия: 0 кВт·ч | ХВ: 0 м³",
+)
+keys_info = st.sidebar.text_input(
+    "Ключи и доступы", value="", placeholder="Ключи: 4 шт. | RFID-карты: 10 шт."
+)
 
-party_2 = st.sidebar.text_input("Принимающая сторона", value="ООО «AzCoin Digital Tech»")
-party_2_rep = st.sidebar.text_input("Представитель 2", value="Мамедов Э. И.")
+st.markdown("---")
 
-auditor_name = st.sidebar.text_input("Аудитор", value="Сабит Фатизаде")
+# --- ОСНОВНАЯ ЧАСТЬ (ТАБЛИЦА ДЕФЕКТОВ) ---
+st.subheader("📋 Дефектовочная ведомость и смета")
+st.markdown(
+    "Заполните или отредактируйте список выявленных дефектов и стоимость их"
+    " устранения:"
+)
 
-# ---------------------------------------------------------
-# 3. METRICS & INPUTS
-# ---------------------------------------------------------
-col1, col2 = st.columns(2)
+# Шаблон таблицы с чистыми примерами
+if "df" not in st.session_state:
+  st.session_state.df = pd.DataFrame([
+      {
+          "Категория": "Отделка",
+          "Описание": "Пример: Микротрещины на гипсокартоне",
+          "Критичность": "Низкая",
+          "Смета (AZN)": 100.0,
+      },
+      {
+          "Категория": "HVAC",
+          "Описание": "Пример: Проверка уровня шума фанкойла",
+          "Критичность": "Средняя",
+          "Смета (AZN)": 200.0,
+      },
+      {
+          "Категория": "Электрика",
+          "Описание": "Пример: Маркировка автоматических выключателей",
+          "Критичность": "Высокая",
+          "Смета (AZN)": 150.0,
+      },
+  ])
 
-with col1:
-    st.subheader("⚡ Показания счетчиков")
-    power_val = st.number_input("Электричество (кВт·ч)", value=48512)
-    cw_val = st.number_input("Холодная вода (м³)", value=412)
-    hw_val = st.number_input("Горячая вода (м³)", value=189)
+# Редактор таблицы
+edited_df = st.data_editor(
+    st.session_state.df, num_rows="dynamic", use_container_width=True
+)
 
-with col2:
-    st.subheader("🔑 Средства доступа")
-    keys_cnt = st.number_input("Ключи (шт.)", value=4)
-    cards_cnt = st.number_input("RFID Карты (шт.)", value=10)
-    remotes_cnt = st.number_input("Пульты HVAC (шт.)", value=2)
+# Расчет итоговой суммы
+total_cost = 0.0
+try:
+  total_cost = edited_df["Смета (AZN)"].sum()
+except Exception:
+  total_cost = 0.0
 
-st.divider()
+st.markdown(
+    f"### Итоговая смета устранения дефектов: **{total_cost:,.2f} AZN**"
+)
 
-# ---------------------------------------------------------
-# 4. DEFECT TABLE
-# ---------------------------------------------------------
-st.subheader("🛠️ Дефектовочная ведомость")
+st.markdown("---")
 
-default_defects = [
-    {"Категория": "Отделка", "Описание": "Микротрещины на гипсокартоне (ресепшн)", "Критичность": "Низкая", "Смета (AZN)": 150.0},
-    {"Категория": "Отделка", "Описание": "Следы протечек на потолке Armstrong", "Критичность": "Средняя", "Смета (AZN)": 350.0},
-    {"Категория": "HVAC", "Описание": "Повышенный шум и вибрация фанкойла", "Критичность": "Средняя", "Смета (AZN)": 300.0},
-    {"Категория": "Электрика", "Описание": "Отсутствие маркировки автоматов в ЩО №2", "Критичность": "Высокая", "Смета (AZN)": 120.0},
-    {"Категория": "Сантехника", "Описание": "Люфт и ослабление фиксации смесителя", "Критичность": "Низкая", "Смета (AZN)": 90.0},
-]
 
-df_defects = pd.DataFrame(default_defects)
-edited_df = st.data_editor(df_defects, num_rows="dynamic", use_container_width=True)
+# --- ГЕНЕРАЦИЯ PDF ---
+class PDF(FPDF):
 
-total_cost = edited_df["Смета (AZN)"].sum()
-st.metric(label="Итоговая смета устранения дефектов", value=f"{total_cost:,.2f} AZN")
+  def header(self):
+    pass
 
-st.divider()
+  def footer(self):
+    self.set_y(-15)
+    self.set_font("helvetica", "I", 8)
+    self.set_text_color(150, 150, 150)
+    self.cell(
+        0,
+        10,
+        f"Страница {self.page_no()} | Global Asset Auditor Platform",
+        0,
+        0,
+        "C",
+    )
 
-# ---------------------------------------------------------
-# 5. PDF GENERATION WITH LOGO SUPPORT
-# ---------------------------------------------------------
-def download_font():
-    font_path = "DejaVuSans.ttf"
-    if not os.path.exists(font_path):
-        url = "https://github.com/dejavu-fonts/dejavu-fonts/raw/master/ttf/DejaVuSans.ttf"
-        try:
-            urllib.request.urlretrieve(url, font_path)
-        except Exception:
-            pass
-    return font_path
 
-def create_pdf(logo):
-    font_path = download_font()
-    pdf = FPDF()
-    pdf.add_page()
-    
-    # Font setup for UTF-8 Support
-    if os.path.exists(font_path):
-        pdf.add_font("DejaVu", "", font_path, uni=True)
-        pdf.set_font("DejaVu", "", 10)
-    else:
-        pdf.set_font("Arial", "", 10)
-
-    # Insert Header Logo if uploaded
-    if logo is not None:
-        try:
-            img = Image.open(logo)
-            temp_path = "temp_logo.png"
-            img.convert("RGB").save(temp_path)
-            pdf.image(temp_path, x=155, y=10, w=40)
-            if os.path.exists(temp_path):
-                os.remove(temp_path)
-        except Exception:
-            pass
-
-    # Title Section
-    pdf.set_font_size(14)
-    pdf.cell(0, 10, f"АКТ ТЕХНИЧЕСКОГО АУДИТА № {act_num}", ln=True, align="L")
-    pdf.set_font_size(9)
-    pdf.cell(0, 5, f"Дата: {audit_date.strftime('%d.%m.%Y')} | Объект: {object_name}", ln=True, align="L")
-    pdf.ln(10)
-
-    # Parties
-    pdf.set_font_size(10)
-    pdf.cell(0, 6, "1. СТОРОНЫ И КОМИССИЯ", ln=True)
-    pdf.cell(0, 5, f"• Передающая сторона: {party_1} ({party_1_rep})", ln=True)
-    pdf.cell(0, 5, f"• Принимающая сторона: {party_2} ({party_2_rep})", ln=True)
-    pdf.cell(0, 5, f"• Эксперт-аудитор: {auditor_name}", ln=True)
-    pdf.ln(5)
-
-    # Resources
-    pdf.cell(0, 6, "2. РЕСУРСНЫЕ ПОКАЗАТЕЛИ И СКУД", ln=True)
-    pdf.cell(0, 5, f"• Электроэнергия: {power_val} кВт·ч | ХВ: {cw_val} м³ | ГВ: {hw_val} м³", ln=True)
-    pdf.cell(0, 5, f"• Ключи: {keys_cnt} шт. | RFID-карты: {cards_cnt} шт. | Пульты HVAC: {remotes_cnt} шт.", ln=True)
-    pdf.ln(5)
-
-    # Table
-    pdf.cell(0, 6, "3. ДЕФЕКТОВОЧНАЯ ВЕДОМОСТЬ", ln=True)
-    pdf.ln(2)
-
-    # Table Header
-    pdf.cell(35, 7, "Категория", border=1)
-    pdf.cell(95, 7, "Описание", border=1)
-    pdf.cell(30, 7, "Критичность", border=1)
-    pdf.cell(30, 7, "Смета (AZN)", border=1, ln=True)
-
-    # Table Body
-    for _, row in edited_df.iterrows():
-        pdf.cell(35, 6, str(row['Категория']), border=1)
-        pdf.cell(95, 6, str(row['Описание'])[:50], border=1)
-        pdf.cell(30, 6, str(row['Критичность']), border=1)
-        pdf.cell(30, 6, f"{row['Смета (AZN)']:,.2f}", border=1, ln=True)
-
-    pdf.cell(160, 7, "ИТОГО СМЕТА:", border=1, align="R")
-    pdf.cell(30, 7, f"{total_cost:,.2f} AZN", border=1, ln=True)
-
-    pdf.ln(12)
-    pdf.cell(0, 5, "ПОДПИСИ СТОРОН:", ln=True)
-    pdf.ln(8)
-    pdf.cell(60, 5, "Аудитор: _____________", ln=False)
-    pdf.cell(60, 5, "Передающая: _____________", ln=False)
-    pdf.cell(60, 5, "Принимающая: _____________", ln=True)
-
-    return bytes(pdf.output())
-
-# ---------------------------------------------------------
-# 6. DOWNLOAD BUTTON
-# ---------------------------------------------------------
 st.subheader("🚀 Запуск и Скачивание")
-if st.button("📄 Сформировать PDF-Акт", type="primary"):
-    with st.spinner("Генерация документа..."):
-        pdf_bytes = create_pdf(logo_file)
-        st.download_button(
-            label="📥 Скачать готовый Акт (PDF)",
-            data=pdf_bytes,
-            file_name=f"Audit_Act_{act_num}.pdf",
-            mime="application/pdf"
+
+if st.button("📄 Сформировать официальный PDF-Акт", type="primary"):
+  pdf_filename = f"Audit_Act_{act_num}.pdf"
+
+  # Создание PDF документа
+  pdf = PDF(orientation="P", unit="mm", format="A4")
+  pdf.add_page()
+
+  # Попытка подключить шрифт с поддержкой кириллицы (DejaVu) если доступен, иначе стандартный
+  font_loaded = False
+  for f_path in ["DejaVuSans.ttf", "/usr/share/fonts/truetype/dejavu/DejaVuSans.ttf"]:
+    if os.path.exists(f_path):
+      try:
+        pdf.add_font("DejaVu", "", f_path, uni=True)
+        pdf.add_font(
+            "DejaVuB", "", f_path.replace("Sans.ttf", "Sans-Bold.ttf"), uni=True
         )
-        st.success("Документ успешно сформирован!")
+        font_loaded = True
+        break
+      except Exception:
+        pass
+
+  if font_loaded:
+    pdf.set_font("DejaVuB", size=14)
+  else:
+    pdf.set_font("helvetica", "B", size=14)
+
+  # Шапка документа
+  pdf.cell(
+      0,
+      10,
+      f"АКТ ТЕХНИЧЕСКОГО АУДИТА № {act_num}"
+      if font_loaded
+      else f"AKT TEHNICHESKOGO AUDITA # {act_num}",
+      0,
+      1,
+      "L",
+  )
+
+  if font_loaded:
+    pdf.set_font("DejaVu", size=10)
+  else:
+    pdf.set_font("helvetica", size=10)
+
+  pdf.cell(
+      0,
+      6,
+      f"Дата: {audit_date} | Объект: {object_name or 'Не указан'} ({object_address or 'Адрес не указан'})",
+      0,
+      1,
+      "L",
+  )
+  pdf.ln(5)
+
+  # Стороны
+  if font_loaded:
+    pdf.set_font("DejaVuB", size=11)
+  else:
+    pdf.set_font("helvetica", "B", size=11)
+  pdf.cell(0, 6, "1. СТОРОНЫ И КОМИССИЯ", 0, 1, "L")
+
+  if font_loaded:
+    pdf.set_font("DejaVu", size=10)
+  else:
+    pdf.set_font("helvetica", size=10)
+  pdf.cell(
+      0, 6, f"- Передающая сторона: {party_trans or 'Не указано'}", 0, 1, "L"
+  )
+  pdf.cell(
+      0, 6, f"- Принимающая сторона: {party_recv or 'Не указано'}", 0, 1, "L"
+  )
+  pdf.cell(
+      0, 6, f"- Эксперт-аудитор: {lead_auditor or 'Не указан'}", 0, 1, "L"
+  )
+  pdf.ln(5)
+
+  # Ресурсы
+  if font_loaded:
+    pdf.set_font("DejaVuB", size=11)
+  else:
+    pdf.set_font("helvetica", "B", size=11)
+  pdf.cell(0, 6, "2. РЕСУРСНЫЕ ПОКАЗАТЕЛИ И ДОСТУПЫ", 0, 1, "L")
+
+  if font_loaded:
+    pdf.set_font("DejaVu", size=10)
+  else:
+    pdf.set_font("helvetica", size=10)
+  pdf.cell(
+      0,
+      6,
+      f"- Показатели: {meters_info or 'Данные не внесены'}",
+      0,
+      1,
+      "L",
+  )
+  pdf.cell(
+      0,
+      6,
+      f"- Ключевые элементы: {keys_info or 'Данные не внесены'}",
+      0,
+      1,
+      "L",
+  )
+  pdf.ln(5)
+
+  # Таблица дефектов
+  if font_loaded:
+    pdf.set_font("DejaVuB", size=11)
+  else:
+    pdf.set_font("helvetica", "B", size=11)
+  pdf.cell(0, 6, "3. ДЕФЕКТОВОЧНАЯ ВЕДОМОСТЬ", 0, 1, "L")
+
+  if font_loaded:
+    pdf.set_font("DejaVuB", size=9)
+  else:
+    pdf.set_font("helvetica", "B", size=9)
+
+  # Табличный хэдер
+  pdf.cell(40, 8, "Категория", 1, 0, "C")
+  pdf.cell(85, 8, "Описание дефекта", 1, 0, "C")
+  pdf.cell(30, 8, "Критичность", 1, 0, "C")
+  pdf.cell(35, 8, "Смета (AZN)", 1, 1, "C")
+
+  if font_loaded:
+    pdf.set_font("DejaVu", size=9)
+  else:
+    pdf.set_font("helvetica", size=9)
+
+  for index, row in edited_df.iterrows():
+    pdf.cell(40, 8, str(row.get("Категория", "")), 1, 0, "L")
+    pdf.cell(85, 8, str(row.get("Описание", "")), 1, 0, "L")
+    pdf.cell(30, 8, str(row.get("Критичность", "")), 1, 0, "C")
+    pdf.cell(35, 8, f"{float(row.get('Смета (AZN)', 0)):,.2f}", 1, 1, "R")
+
+  # Итого
+  if font_loaded:
+    pdf.set_font("DejaVuB", size=10)
+  else:
+    pdf.set_font("helvetica", "B", size=10)
+  pdf.cell(
+      155, 9, "ИТОГО СМЕТА:", 1, 0, "R"
+  )
+  pdf.cell(35, 9, f"{total_cost:,.2f} AZN", 1, 1, "R")
+  pdf.ln(10)
+
+  # Подписи
+  if font_loaded:
+    pdf.set_font("DejaVuB", size=10)
+  else:
+    pdf.set_font("helvetica", "B", size=10)
+  pdf.cell(0, 6, "ПОДПИСИ СТОРОН:", 0, 1, "L")
+  pdf.ln(8)
+
+  if font_loaded:
+    pdf.set_font("DejaVu", size=9)
+  else:
+    pdf.set_font("helvetica", size=9)
+  pdf.cell(
+      63,
+      6,
+      "Аудитор: ______________________",
+      0,
+      0,
+      "L",
+  )
+  pdf.cell(
+      63,
+      6,
+      "Передающая: ___________________",
+      0,
+      0,
+      "L",
+  )
+  pdf.cell(
+      63,
+      6,
+      "Принимающая: __________________",
+      0,
+      1,
+      "L",
+  )
+
+  # Сохранение PDF
+  pdf.output(pdf_filename)
+
+  with open(pdf_filename, "rb") as f:
+    st.download_button(
+        label="📥 Скачать готовый PDF-Акт",
+        data=f,
+        file_name=pdf_filename,
+        mime="application/pdf",
+    )
+  st.success("Акт успешно сформирован и готов к скачиванию!")
