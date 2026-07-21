@@ -52,9 +52,8 @@ def load_font():
             file.write(response.content)
 load_font()
 
-# 3. Функция генерации с защитой от 429 и перебором моделей
+# 3. Функция генерации с защитой от пустых ошибок
 def generate_report_with_fallback(prompt):
-    # Используем только базовые стабильные модели Free Tier
     candidate_models = ['gemini-1.5-flash', 'gemini-1.5-pro', 'gemini-1.5-flash-8b']
     last_exception = None
     
@@ -63,17 +62,14 @@ def generate_report_with_fallback(prompt):
             model = genai.GenerativeModel(model_name)
             response = model.generate_content(prompt)
             return response.text, model_name
-        except NotFound:
-            continue
-        except ResourceExhausted as e:
-            # Задержка в случае лимита запросов
-            time.sleep(2)
-            last_exception = e
-            continue
         except Exception as e:
             last_exception = e
+            time.sleep(1)
             continue
             
+    if last_exception is None:
+        raise RuntimeError("Ни одна из доступных моделей не ответила. Проверьте правильность API ключа.")
+    
     raise last_exception
 
 # 4. Боковая панель
@@ -164,7 +160,7 @@ if api_key:
             else:
                 st.warning("⚠️ Пожалуйста, заполните оба поля: название объекта и его описание.")
     except ResourceExhausted:
-        st.error("⏳ **Превышен лимит запросов Google API (Rate Limit).** Подождите 30 секунд и нажмите кнопку снова, или создайте новый бесплатный ключ в Google AI Studio.")
+        st.error("⏳ **Превышен лимит запросов Google API.** Подождите 30 секунд и повторите попытку.")
     except Exception as err:
         st.error(f"❌ Ошибка подключения: {err}")
 else:
