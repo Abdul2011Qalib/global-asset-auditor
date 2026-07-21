@@ -5,7 +5,7 @@ import os
 import requests
 import time
 
-# 1. Настройка страницы и стильного интерфейса (Gold & Black)
+# 1. Настройка страницы и премиального дизайна (Gold & Black)
 st.set_page_config(page_title="Global Asset Auditor", page_icon="🏢", layout="centered")
 
 st.markdown("""
@@ -40,22 +40,32 @@ st.markdown("""
 st.title("🏢 Global Asset Auditor")
 st.markdown("### Профессиональная система оценки и юридической фиксации активов")
 
-# 2. Безопасная загрузка шрифта для PDF
+# 2. Бронебойная загрузка шрифта для PDF (с проверкой валидности)
 FONT_PATH = "DejaVuSans.ttf"
+
 @st.cache_resource
 def load_font():
-    if not os.path.exists(FONT_PATH):
-        url = "https://github.com/matomo-org/travis-scripts/raw/master/fonts/DejaVuSans.ttf"
-        response = requests.get(url, allow_redirects=True)
-        with open(FONT_PATH, 'wb') as file:
-            file.write(response.content)
+    # Если файла нет или его размер меньше 100 КБ (скачалась страница ошибки)
+    if not os.path.exists(FONT_PATH) or os.path.getsize(FONT_PATH) < 100000:
+        url = "https://cdn.jsdelivr.net/gh/dejavu-fonts/dejavu-fonts@master/ttf/DejaVuSans.ttf"
+        try:
+            response = requests.get(url, allow_redirects=True, timeout=10)
+            if response.status_code == 200:
+                with open(FONT_PATH, 'wb') as file:
+                    file.write(response.content)
+        except Exception:
+            # Резервное зеркало
+            alt_url = "https://raw.githubusercontent.com/gnuplot/gnuplot/master/term/PostScript/DejaVuSans.ttf"
+            response = requests.get(alt_url, timeout=10)
+            with open(FONT_PATH, 'wb') as file:
+                file.write(response.content)
+
 load_font()
 
-# 3. Динамическая генерация: запрашиваем реальный список доступных моделей у Google
+# 3. Безопасная генерация с динамическим выбором доступных моделей
 def generate_report_safely(api_key, prompt):
     genai.configure(api_key=api_key)
     
-    # Запрашиваем у сервера Google список всех моделей, поддерживающих generateContent
     try:
         available_models = [
             m.name for m in genai.list_models() 
@@ -67,7 +77,6 @@ def generate_report_safely(api_key, prompt):
     if not available_models:
         raise Exception("Для вашего API-ключа не найдено доступных текстовых моделей.")
 
-    # Выставляем приоритет для стандартных стабильных версий
     preferred_order = [
         'models/gemini-1.5-flash',
         'models/gemini-1.5-pro',
@@ -75,7 +84,6 @@ def generate_report_safely(api_key, prompt):
         'models/gemini-1.0-pro'
     ]
     
-    # Сортируем: сначала рекомендуемые модели (если есть у ключа), затем остальные доступные
     candidate_models = [m for m in preferred_order if m in available_models]
     for m in available_models:
         if m not in candidate_models:
@@ -83,7 +91,6 @@ def generate_report_safely(api_key, prompt):
             
     last_error = None
     
-    # Пробуем по очереди только реально существующие модели
     for model_name in candidate_models:
         try:
             model = genai.GenerativeModel(model_name)
@@ -92,7 +99,7 @@ def generate_report_safely(api_key, prompt):
             return response.text, clean_name
         except Exception as e:
             last_error = e
-            time.sleep(1) # Небольшая пауза при переключении
+            time.sleep(1)
             continue
             
     if last_error:
