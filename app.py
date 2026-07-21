@@ -4,6 +4,7 @@ import os
 import urllib.request
 from datetime import date
 from fpdf import FPDF
+from PIL import Image
 
 # ---------------------------------------------------------
 # 1. PAGE CONFIGURATION
@@ -23,6 +24,11 @@ st.divider()
 # 2. SIDEBAR CONFIGURATION
 # ---------------------------------------------------------
 st.sidebar.header("📋 Параметры акта")
+
+st.sidebar.subheader("🖼️ Логотип компании")
+logo_file = st.sidebar.file_uploader("Загрузить логотип (PNG / JPG)", type=["png", "jpg", "jpeg"])
+
+st.sidebar.subheader("📌 Основная информация")
 act_num = st.sidebar.text_input("Номер акта", value="GS-BAK-1402")
 audit_date = st.sidebar.date_input("Дата аудита", value=date.today())
 object_name = st.sidebar.text_input("Объект", value="Офис №1402, Port Baku Tower")
@@ -78,7 +84,7 @@ st.metric(label="Итоговая смета устранения дефекто
 st.divider()
 
 # ---------------------------------------------------------
-# 5. PURE PYTHON PDF GENERATION (FPDF2)
+# 5. PDF GENERATION WITH LOGO SUPPORT
 # ---------------------------------------------------------
 def download_font():
     font_path = "DejaVuSans.ttf"
@@ -90,7 +96,7 @@ def download_font():
             pass
     return font_path
 
-def create_pdf():
+def create_pdf(logo):
     font_path = download_font()
     pdf = FPDF()
     pdf.add_page()
@@ -102,29 +108,41 @@ def create_pdf():
     else:
         pdf.set_font("Arial", "", 10)
 
-    # Title
+    # Insert Header Logo if uploaded
+    if logo is not None:
+        try:
+            img = Image.open(logo)
+            temp_path = "temp_logo.png"
+            img.convert("RGB").save(temp_path)
+            pdf.image(temp_path, x=155, y=10, w=40)
+            if os.path.exists(temp_path):
+                os.remove(temp_path)
+        except Exception:
+            pass
+
+    # Title Section
     pdf.set_font_size(14)
-    pdf.cell(0, 10, f"АКТ ТЕХНИЧЕСКОГО АУДИТА № {act_num}", ln=True, align="C")
+    pdf.cell(0, 10, f"АКТ ТЕХНИЧЕСКОГО АУДИТА № {act_num}", ln=True, align="L")
     pdf.set_font_size(9)
-    pdf.cell(0, 5, f"Дата: {audit_date.strftime('%d.%m.%Y')} | Объект: {object_name}", ln=True, align="C")
-    pdf.ln(8)
+    pdf.cell(0, 5, f"Дата: {audit_date.strftime('%d.%m.%Y')} | Объект: {object_name}", ln=True, align="L")
+    pdf.ln(10)
 
     # Parties
     pdf.set_font_size(10)
-    pdf.cell(0, 6, f"1. СТОРОНЫ И КОМИССИЯ", ln=True)
+    pdf.cell(0, 6, "1. СТОРОНЫ И КОМИССИЯ", ln=True)
     pdf.cell(0, 5, f"• Передающая сторона: {party_1} ({party_1_rep})", ln=True)
     pdf.cell(0, 5, f"• Принимающая сторона: {party_2} ({party_2_rep})", ln=True)
     pdf.cell(0, 5, f"• Эксперт-аудитор: {auditor_name}", ln=True)
     pdf.ln(5)
 
     # Resources
-    pdf.cell(0, 6, f"2. РЕСУРСНЫЕ ПОКАЗАТЕЛИ И СКУД", ln=True)
+    pdf.cell(0, 6, "2. РЕСУРСНЫЕ ПОКАЗАТЕЛИ И СКУД", ln=True)
     pdf.cell(0, 5, f"• Электроэнергия: {power_val} кВт·ч | ХВ: {cw_val} м³ | ГВ: {hw_val} м³", ln=True)
     pdf.cell(0, 5, f"• Ключи: {keys_cnt} шт. | RFID-карты: {cards_cnt} шт. | Пульты HVAC: {remotes_cnt} шт.", ln=True)
     pdf.ln(5)
 
     # Table
-    pdf.cell(0, 6, f"3. ДЕФЕКТОВОЧНАЯ ВЕДОМОСТЬ", ln=True)
+    pdf.cell(0, 6, "3. ДЕФЕКТОВОЧНАЯ ВЕДОМОСТЬ", ln=True)
     pdf.ln(2)
 
     # Table Header
@@ -158,7 +176,7 @@ def create_pdf():
 st.subheader("🚀 Запуск и Скачивание")
 if st.button("📄 Сформировать PDF-Акт", type="primary"):
     with st.spinner("Генерация документа..."):
-        pdf_bytes = create_pdf()
+        pdf_bytes = create_pdf(logo_file)
         st.download_button(
             label="📥 Скачать готовый Акт (PDF)",
             data=pdf_bytes,
