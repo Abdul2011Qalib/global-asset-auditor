@@ -1,8 +1,10 @@
 import streamlit as st
 import google.generativeai as genai
+from google.api_core.exceptions import ResourceExhausted, NotFound
 from fpdf import FPDF
 import os
 import requests
+import time
 
 # 1. Настройка страницы и премиального дизайна (Gold & Black)
 st.set_page_config(page_title="Global Asset Auditor", page_icon="🏢", layout="centered")
@@ -50,10 +52,10 @@ def load_font():
             file.write(response.content)
 load_font()
 
-# 3. Функция генерации с автоматическим перебором рабочих моделей
+# 3. Функция генерации с защитой от 429 и перебором моделей
 def generate_report_with_fallback(prompt):
-    # Приоритетный список актуальных моделей
-    candidate_models = ['gemini-1.5-flash', 'gemini-1.5-pro', 'gemini-2.0-flash']
+    # Используем только базовые стабильные модели Free Tier
+    candidate_models = ['gemini-1.5-flash', 'gemini-1.5-pro', 'gemini-1.5-flash-8b']
     last_exception = None
     
     for model_name in candidate_models:
@@ -61,6 +63,13 @@ def generate_report_with_fallback(prompt):
             model = genai.GenerativeModel(model_name)
             response = model.generate_content(prompt)
             return response.text, model_name
+        except NotFound:
+            continue
+        except ResourceExhausted as e:
+            # Задержка в случае лимита запросов
+            time.sleep(2)
+            last_exception = e
+            continue
         except Exception as e:
             last_exception = e
             continue
@@ -76,7 +85,7 @@ st.sidebar.markdown("---")
 if api_key:
     try:
         genai.configure(api_key=api_key)
-        st.sidebar.success("✅ Ключ API авторизован")
+        st.sidebar.success("✅ Ключ API активирован")
         
         st.markdown("---")
         object_name = st.text_input("Название или точный адрес объекта:", placeholder="Например: Офис 150 кв.м., БЦ 'Port Baku'")
@@ -87,7 +96,6 @@ if api_key:
             if object_name and user_input:
                 with st.spinner('ИИ-Аудитор формирует юридический документ...'):
                     
-                    # Глубокий профессиональный промпт
                     prompt = f"""
 Ты — ведущий международный эксперт по техническому и юридическому аудиту недвижимости и коммерческих активов (Senior Asset Auditor).
 
@@ -101,7 +109,7 @@ if api_key:
 
 1. ШАПКА И ЮРИДИЧЕСКАЯ ПРЕАМБУЛА
    - Официальное наименование документа, номер акта, город, дата.
-   - Реквизиты Передающей и Принимающей сторон (с шаблонами под заполнение ФИО, Должности, Основания полномочий).
+   - Реквизиты Передающей и Принимающей сторон (шаблоны под заполнение ФИО, Должности, Основания полномочий).
 
 2. ТЕХНИЧЕСКИЙ ПАСПОРТ И ИНВЕНТАРИЗАЦИЯ
    - Полное описание объекта (категория, площадь, назначение).
@@ -109,7 +117,7 @@ if api_key:
    - Блок фиксации показаний приборов учета (Электроэнергия, Вода, Хладагенты/Газ).
 
 3. ДЕФЕКТОВОЧНАЯ ВЕДОМОСТЬ (ПОСЕКТОРНЫЙ АНАЛИЗ)
-   Детализий состояние по категориям (опиши подробно, расширяя данные пользователя до инженерных терминов):
+   Детализируй состояние по категориям (опиши подробно, расширяя данные пользователя до инженерных терминов):
    - Ограждающие и внутренние конструкции (потолки, стены, напольные покрытия).
    - Инженерные сети (HVAC/кондиционирование, электрика, розетки, освещение, сантехника).
    - Специализированное оборудование и мебель.
@@ -155,7 +163,9 @@ if api_key:
                     )
             else:
                 st.warning("⚠️ Пожалуйста, заполните оба поля: название объекта и его описание.")
+    except ResourceExhausted:
+        st.error("⏳ **Превышен лимит запросов Google API (Rate Limit).** Подождите 30 секунд и нажмите кнопку снова, или создайте новый бесплатный ключ в Google AI Studio.")
     except Exception as err:
-        st.error(f"❌ Ошибка авторизации или подключения: {err}. Проверьте правильность API ключа.")
+        st.error(f"❌ Ошибка подключения: {err}")
 else:
     st.info("👈 Для начала работы введите ваш API ключ в меню слева.")
