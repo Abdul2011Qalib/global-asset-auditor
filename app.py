@@ -149,79 +149,55 @@ tab_create, tab_history, tab_billing = st.tabs([
     "💳 Тарифы и Оплата",
 ])
 
-with tab_create:
-  st.subheader("📋 Дефектовочная ведомость и расчет сметы")
+with tab_billing:
+  st.subheader("💳 Тарифные планы и корпоративные решения")
+  
+  col1, col2, col3 = st.columns(3)
 
-  if "df" not in st.session_state:
-    st.session_state.df = pd.DataFrame([
-        {
-            "Категория": "Отделка",
-            "Описание": "Микротрещины на гипсокартоне",
-            "Критичность": "Низкая",
-            "Смета (AZN)": 150.0,
-        },
-        {
-            "Категория": "HVAC",
-            "Описание": "Повышенный шум фанкойла",
-            "Критичность": "Средняя",
-            "Смета (AZN)": 300.0,
-        },
-        {
-            "Категория": "Электрика",
-            "Описание": "Отсутствие маркировки автоматов",
-            "Критичность": "Высокая",
-            "Смета (AZN)": 120.0,
-        },
-    ])
+  with col1:
+    st.markdown("### 🟢 Базовый (Free)")
+    st.markdown("""
+    - До 5 аудитов в месяц
+    - Стандартные PDF-отчеты
+    - Облачное хранение
+    """)
+    st.markdown("**Текущий статус:** Ваш тариф")
 
-  edited_df = st.data_editor(
-      st.session_state.df, num_rows="dynamic", use_container_width=True
-  )
+  with col2:
+    st.markdown("### 🟡 Профессиональный (PRO)")
+    st.markdown("""
+    - Безлимитные официальные PDF
+    - Без водяных знаков
+    - Приоритетная поддержка
+    - **49 AZN / месяц**
+    """)
+    if st.button("🚀 Выбрать PRO", type="primary", key="pro_btn"):
+      with engine.begin() as conn:
+        conn.execute(
+            sqlalchemy.text("UPDATE users SET plan = 'PRO' WHERE username = :u"),
+            {"u": st.session_state.username},
+        )
+      st.session_state.user_plan = "PRO"
+      st.success("Тариф обновлен до PRO!")
+      st.rerun()
 
-  try:
-    total_cost = edited_df["Смета (AZN)"].sum()
-  except Exception:
-    total_cost = 0.0
-
-  st.markdown(
-      f"### Итоговая смета устранения дефектов: **{total_cost:,.2f} AZN**"
-  )
-  st.markdown("---")
-
-
-  # Класс генерации PDF
-  class PDF(FPDF):
-
-    def footer(self):
-      self.set_y(-15)
-      self.set_font("helvetica", "I", 8)
-      self.set_text_color(150, 150, 150)
-      self.cell(
-          0,
-          10,
-          f"Страница {self.page_no()} | Global Asset Auditor SaaS",
-          0,
-          0,
-          "C",
-      )
-
-
-  st.subheader("🚀 Генерация и Сохранение")
-
-  # Проверка тарифных ограничений
-  can_download = True
-  if st.session_state.user_plan == "Free":
-    st.info(
-        "💡 На бесплатном тарифе доступна генерация черновиков. Для"
-        " разблокировки официальных PDF без водяных знаков перейдите в раздел"
-        " «Тарифы и Оплата»."
-    )
-
-  if st.button("📄 Сформировать и сохранить официальный акт", type="primary"):
-    pdf_filename = f"Audit_{act_num}_{st.session_state.username}.pdf"
-
-    pdf = PDF(orientation="P", unit="mm", format="A4")
-    pdf.add_page()
+  with col3:
+    st.markdown("### 💎 Корпоративный (Enterprise)")
+    st.markdown("""
+    - Все функции PRO без ограничений
+    - Несколько сотрудников в команде
+    - Индивидуальный дизайн и логотип
+    - **149 AZN / месяц**
+    """)
+    if st.button("🌟 Подключить Enterprise", type="primary", key="ent_btn"):
+      with engine.begin() as conn:
+        conn.execute(
+            sqlalchemy.text("UPDATE users SET plan = 'Enterprise' WHERE username = :u"),
+            {"u": st.session_state.username},
+        )
+      st.session_state.user_plan = "Enterprise"
+      st.success("Тариф обновлен до Корпоративного!")
+      st.rerun()
 
     # Подключение кириллического шрифта
     font_loaded = False
