@@ -234,9 +234,15 @@ with tab_archive:
 with tab_billing:
     st.subheader("💳 Тарифные планы и оплата")
     
+    # Блок с реквизитами для перевода
     st.markdown("""
-    > **Инструкция:** Нажмите на кнопку нужного тарифа, чтобы перейти на страницу оплаты. После перевода ваш тариф будет активирован.
-    """)
+    <div style="background-color: #1a1f2c; padding: 20px; border-radius: 10px; border: 1px solid #d4af37; margin-bottom: 20px;">
+        <h3 style="color: #d4af37; margin-top: 0;">🦁 Реквизиты для перевода</h3>
+        <p>Для активации тарифа переведите нужную сумму на карту:</p>
+        <p style="font-size: 18px; font-weight: bold; color: #ffffff;">Номер карты: <span style="color: #d4af37;">4169 7311 XXXX XXXX</span></p>
+        <p style="font-size: 13px; color: #e0e0e0;"><i>⚠️ В сообщении к переводу обязательно укажите ваш логин: <b>{}</b></i></p>
+    </div>
+    """.format(st.session_state.username), unsafe_allow_html=True)
 
     col1, col2, col3 = st.columns(3)
 
@@ -249,11 +255,9 @@ with tab_billing:
     with col2:
         st.markdown("### 🟡 Профессиональный (PRO)")
         st.markdown("- Безлимитные официальные PDF\n- Без водяных знаков\n- Приоритетная поддержка\n- **49 AZN / месяц**")
-        # Замените ссылку ниже на вашу реальную ссылку на оплату Leobank
-        st.link_button("🚀 Оплатить PRO (49 AZN)", "https://leobank.az/your-link-pro", type="primary")
+        st.markdown("Переведите **49 AZN** по реквизитам выше")
 
     with col3:
         st.markdown("### 💎 Корпоративный (Enterprise)")
         st.markdown("- Все функции PRO без ограничений\n- Несколько сотрудников в команде\n- Индивидуальный дизайн и логотип\n- **149 AZN / месяц**")
-        # Замените ссылку ниже на вашу реальную ссылку на оплату Leobank
-        st.link_button("🌟 Оплатить Enterprise (149 AZN)", "https://leobank.az/your-link-enterprise", type="primary")
+        st.markdown("Переведите **149 AZN** по реквизитам выше")
