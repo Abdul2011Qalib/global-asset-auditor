@@ -239,7 +239,7 @@ with tab_billing:
     <div style="background-color: #1a1f2c; padding: 20px; border-radius: 10px; border: 1px solid #d4af37; margin-bottom: 20px;">
         <h3 style="color: #d4af37; margin-top: 0;">🦁 Реквизиты для перевода</h3>
         <p>Для активации тарифа переведите нужную сумму на карту:</p>
-        <p style="font-size: 18px; font-weight: bold; color: #ffffff;">Номер карты: <span style="color: #d4af37;">4169 7311 XXXX XXXX</span></p>
+        <p style="font-size: 18px; font-weight: bold; color: #ffffff;">Номер карты: <span style="color: #d4af37;">4098 5844 9895 1357</span></p>
         <p style="font-size: 13px; color: #e0e0e0;"><i>⚠️ В сообщении к переводу обязательно укажите ваш логин: <b>{}</b></i></p>
     </div>
     """.format(st.session_state.username), unsafe_allow_html=True)
