@@ -15,7 +15,6 @@ st.set_page_config(
     layout="centered"
 )
 
-# Скрытие служебных элементов Streamlit и премиум кастомизация
 st.markdown("""
     <style>
     #MainMenu {visibility: hidden;}
@@ -69,57 +68,45 @@ st.markdown("""
 """, unsafe_allow_html=True)
 
 # ==========================================
-# 2. ПРОВЕРКА И ЗАГРУЗКА ВАЛИДНОГО TTF-ШРИФТА
+# 2. БРОНЕБОЙНАЯ ЗАГРУЗКА И ВАЛИДАЦИЯ ШРИФТА
 # ==========================================
 FONT_PATH = "DejaVuSans.ttf"
 
-def ensure_valid_font():
-    """Проверяет заголовок файла на корректный сигнатурный байт TTF/OTF. 
-    Если файл поврежден или является HTML, удаляет и скачивает заново."""
-    
-    def is_ttf(path):
-        if not os.path.exists(path):
-            return False
-        try:
-            with open(path, "rb") as f:
-                header = f.read(4)
-                # Подлинные TTF/OTF начинаются с \x00\x01\x00\x00 или b'OTTO' или b'true'
-                return header in [b'\x00\x01\x00\x00', b'OTTO', b'true']
-        except Exception:
-            return False
-
-    if not is_ttf(FONT_PATH):
-        if os.path.exists(FONT_PATH):
-            try:
-                os.remove(FONT_PATH)
-            except Exception:
-                pass
-                
-        # Список надежных прямых источников
-        urls = [
-            "https://github.com/google/fonts/raw/main/ofl/dejavusans/DejaVuSans.ttf",
-            "https://cdn.jsdelivr.net/gh/dejavu-fonts/dejavu-fonts@master/ttf/DejaVuSans.ttf",
-            "https://raw.githubusercontent.com/dejavu-fonts/dejavu-fonts/master/ttf/DejaVuSans.ttf"
-        ]
+def download_unicode_font():
+    """Скачивает заведомо исправный файл шрифта DejaVuSans.ttf."""
+    if os.path.exists(FONT_PATH) and os.path.getsize(FONT_PATH) > 100000:
+        return FONT_PATH
         
-        for url in urls:
-            try:
-                res = requests.get(url, timeout=10, allow_redirects=True)
-                if res.status_code == 200 and res.content[:4] in [b'\x00\x01\x00\x00', b'OTTO', b'true']:
-                    with open(FONT_PATH, "wb") as f:
-                        f.write(res.content)
-                    break
-            except Exception:
-                continue
+    urls = [
+        "https://cdn.jsdelivr.net/npm/dejavu-fonts-ttf@2.37.0/ttf/DejaVuSans.ttf",
+        "https://raw.githubusercontent.com/fpdf2/fpdf2/master/test/fonts/DejaVuSans.ttf",
+        "https://raw.githubusercontent.com/matomo-org/travis-scripts/master/fonts/DejaVuSans.ttf"
+    ]
+    
+    for url in urls:
+        try:
+            res = requests.get(url, timeout=12, allow_redirects=True)
+            if res.status_code == 200 and len(res.content) > 100000:
+                with open(FONT_PATH, "wb") as f:
+                    f.write(res.content)
+                return FONT_PATH
+        except Exception:
+            continue
+            
+    return None
 
-ensure_valid_font()
-
-# Класс PDF с оформлением
+# Кастомный класс PDF с официальной версткой
 class ProfessionalPDF(FPDF):
+    def __init__(self, font_available=True):
+        super().__init__()
+        self.font_available = font_available
+
     def header(self):
-        ensure_valid_font()
-        self.add_font("DejaVu", "", FONT_PATH, uni=True)
-        self.set_font("DejaVu", "", 9)
+        if self.font_available:
+            self.set_font("DejaVu", "", 9)
+        else:
+            self.set_font("Arial", "B", 9)
+            
         self.set_text_color(150, 150, 150)
         self.cell(0, 5, "GLOBAL ASSET AUDITOR | OFFICIAL AUDIT REPORT", 0, 1, "R")
         self.set_draw_color(212, 175, 55)
@@ -129,11 +116,13 @@ class ProfessionalPDF(FPDF):
 
     def footer(self):
         self.set_y(-15)
-        ensure_valid_font()
-        self.add_font("DejaVu", "", FONT_PATH, uni=True)
-        self.set_font("DejaVu", "", 8)
+        if self.font_available:
+            self.set_font("DejaVu", "", 8)
+        else:
+            self.set_font("Arial", "", 8)
+            
         self.set_text_color(150, 150, 150)
-        self.cell(0, 10, f"Страница {self.page_no()}", 0, 0, "C")
+        self.cell(0, 10, f"Page {self.page_no()}", 0, 0, "C")
 
 # ==========================================
 # 3. ИИ-ЯДРО С АВТОПЕРЕКЛЮЧЕНИЕМ И ПОДДЕРЖКОЙ ФОТО
@@ -226,12 +215,20 @@ if api_key:
                     with st.expander("📄 Предварительный просмотр документа", expanded=True):
                         st.markdown(report_text)
                     
-                    # Генерация PDF
-                    ensure_valid_font()
-                    pdf = ProfessionalPDF()
-                    pdf.add_page()
-                    pdf.add_font("DejaVu", "", FONT_PATH, uni=True)
-                    pdf.set_font("DejaVu", size=10)
+                    # Безопасная генерация PDF
+                    font_file = download_unicode_font()
+                    font_ok = font_file is not None
+                    
+                    pdf = ProfessionalPDF(font_available=font_ok)
+                    
+                    if font_ok:
+                        pdf.add_font("DejaVu", "", font_file, uni=True)
+                        pdf.add_page()
+                        pdf.set_font("DejaVu", size=10)
+                    else:
+                        pdf.add_page()
+                        pdf.set_font("Arial", size=10)
+                        
                     pdf.set_text_color(30, 30, 30)
                     
                     clean_text = report_text.replace('**', '').replace('*', '-').replace('#', '')
