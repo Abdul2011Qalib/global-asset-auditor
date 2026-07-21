@@ -4,48 +4,82 @@ from fpdf import FPDF
 import os
 import requests
 import time
+from PIL import Image
 
-# 1. Настройка страницы и премиального дизайна (Gold & Black)
-st.set_page_config(page_title="Global Asset Auditor", page_icon="🏢", layout="centered")
+# ==========================================
+# 1. КОНФИГУРАЦИЯ И ПРЕМИУМ-ДИЗАЙН (CSS)
+# ==========================================
+st.set_page_config(
+    page_title="Global Asset Auditor | B2B Platform", 
+    page_icon="🏢", 
+    layout="centered"
+)
 
+# Скрытие служебных элементов Streamlit и премиум кастомизация
 st.markdown("""
     <style>
+    /* Скрытие стандартных элементов Streamlit */
+    #MainMenu {visibility: hidden;}
+    footer {visibility: hidden;}
+    header {visibility: hidden;}
+    
     .stApp {
-        background-color: #121212;
-        color: #E0E0E0;
+        background-color: #0E0E10;
+        color: #E2E8F0;
+        font-family: 'Inter', sans-serif;
     }
+    
+    /* Заголовки */
     h1, h2, h3 {
         color: #D4AF37 !important;
+        font-weight: 700 !important;
+        letter-spacing: -0.5px;
     }
+    
+    /* Карточки и блоки */
+    div[data-testid="stExpander"] {
+        border: 1px solid #2D2D35 !important;
+        background-color: #16161A !important;
+        border-radius: 8px !important;
+    }
+    
+    /* Кнопки */
     .stButton>button {
-        background-color: #D4AF37;
-        color: #121212;
+        background: linear-gradient(135deg, #D4AF37 0%, #AA7C11 100%);
+        color: #000000;
         font-weight: bold;
         border: none;
-        border-radius: 5px;
-        width: 100%;
+        border-radius: 6px;
+        padding: 12px 24px;
+        transition: all 0.3s ease;
+        box-shadow: 0 4px 15px rgba(212, 175, 55, 0.2);
     }
     .stButton>button:hover {
-        background-color: #C5A028;
+        transform: translateY(-2px);
+        box-shadow: 0 6px 20px rgba(212, 175, 55, 0.4);
         color: #000000;
     }
-    .stTextInput>div>div>input, .stTextArea>div>div>textarea {
-        background-color: #1E1E1E;
-        color: #FFFFFF;
-        border: 1px solid #D4AF37;
+    
+    /* Инпуты */
+    .stTextInput>div>div>input, .stTextArea>div>div>textarea, .stSelectbox>div>div {
+        background-color: #16161A !important;
+        color: #FFFFFF !important;
+        border: 1px solid #2D2D35 !important;
+        border-radius: 6px !important;
+    }
+    .stTextInput>div>div>input:focus, .stTextArea>div>div>textarea:focus {
+        border-color: #D4AF37 !important;
     }
     </style>
 """, unsafe_allow_html=True)
 
-st.title("🏢 Global Asset Auditor")
-st.markdown("### Профессиональная система оценки и юридической фиксации активов")
-
-# 2. Бронебойная загрузка шрифта для PDF (с проверкой валидности)
+# ==========================================
+# 2. ПОДГОТОВКА ШРИФТА И PDF-КЛАССА
+# ==========================================
 FONT_PATH = "DejaVuSans.ttf"
 
 @st.cache_resource
 def load_font():
-    # Если файла нет или его размер меньше 100 КБ (скачалась страница ошибки)
     if not os.path.exists(FONT_PATH) or os.path.getsize(FONT_PATH) < 100000:
         url = "https://cdn.jsdelivr.net/gh/dejavu-fonts/dejavu-fonts@master/ttf/DejaVuSans.ttf"
         try:
@@ -54,7 +88,6 @@ def load_font():
                 with open(FONT_PATH, 'wb') as file:
                     file.write(response.content)
         except Exception:
-            # Резервное зеркало
             alt_url = "https://raw.githubusercontent.com/gnuplot/gnuplot/master/term/PostScript/DejaVuSans.ttf"
             response = requests.get(alt_url, timeout=10)
             with open(FONT_PATH, 'wb') as file:
@@ -62,140 +95,140 @@ def load_font():
 
 load_font()
 
-# 3. Безопасная генерация с динамическим выбором доступных моделей
-def generate_report_safely(api_key, prompt):
+# Кастомный класс PDF с элегантной версткой
+class ProfessionalPDF(FPDF):
+    def header(self):
+        self.add_font("DejaVu", "", FONT_PATH, uni=True)
+        self.set_font("DejaVu", "", 9)
+        self.set_text_color(150, 150, 150)
+        self.cell(0, 5, "GLOBAL ASSET AUDITOR | OFFICIAL AUDIT REPORT", 0, 1, "R")
+        self.set_draw_color(212, 175, 55) # Золотая линия
+        self.set_linewidth(0.5)
+        self.line(10, 15, 200, 15)
+        self.ln(5)
+
+    def footer(self):
+        self.set_y(-15)
+        self.add_font("DejaVu", "", FONT_PATH, uni=True)
+        self.set_font("DejaVu", "", 8)
+        self.set_text_color(150, 150, 150)
+        self.cell(0, 10, f"Страница {self.page_no()}", 0, 0, "C")
+
+# ==========================================
+# 3. ИИ-ЯДРО С АВТОПЕРЕКЛЮЧЕНИЕМ И ПОДДЕРЖКОЙ ФОТО
+# ==========================================
+def generate_audit_report(api_key, prompt, image=None):
     genai.configure(api_key=api_key)
     
     try:
-        available_models = [
-            m.name for m in genai.list_models() 
-            if 'generateContent' in m.supported_generation_methods
-        ]
+        available_models = [m.name for m in genai.list_models() if 'generateContent' in m.supported_generation_methods]
     except Exception as e:
-        raise Exception(f"Не удалось получить список моделей: {e}")
+        raise Exception(f"Ошибка получения моделей: {e}")
         
-    if not available_models:
-        raise Exception("Для вашего API-ключа не найдено доступных текстовых моделей.")
-
-    preferred_order = [
-        'models/gemini-1.5-flash',
-        'models/gemini-1.5-pro',
-        'models/gemini-2.0-flash',
-        'models/gemini-1.0-pro'
-    ]
+    preferred_order = ['models/gemini-1.5-flash', 'models/gemini-1.5-pro', 'models/gemini-2.0-flash']
+    candidate_models = [m for m in preferred_order if m in available_models] + [m for m in available_models if m not in preferred_order]
     
-    candidate_models = [m for m in preferred_order if m in available_models]
-    for m in available_models:
-        if m not in candidate_models:
-            candidate_models.append(m)
-            
     last_error = None
-    
     for model_name in candidate_models:
         try:
             model = genai.GenerativeModel(model_name)
-            response = model.generate_content(prompt)
-            clean_name = model_name.replace("models/", "")
-            return response.text, clean_name
+            contents = [prompt, image] if image else [prompt]
+            response = model.generate_content(contents)
+            return response.text, model_name.replace("models/", "")
         except Exception as e:
             last_error = e
             time.sleep(1)
             continue
             
-    if last_error:
-        raise last_error
-    else:
-        raise Exception("Не удалось сгенерировать документ ни одной из доступных моделей.")
+    raise last_error if last_error else Exception("Все модели недоступны.")
 
-# 4. Боковая панель
-st.sidebar.markdown("## ⚙️ Настройки системы")
+# ==========================================
+# 4. ИНТЕРФЕЙС ПЛАТФОРМЫ
+# ==========================================
+st.title("🏢 Global Asset Auditor")
+st.markdown("### Корпоративная система технического и юридического аудита активов")
+
+st.sidebar.markdown("## ⚙️ Панель управления")
 api_key = st.sidebar.text_input("Введите Google Gemini API Key", type="password")
+doc_lang = st.sidebar.selectbox("Язык итогового документа:", ["Русский", "Азербайджанский (Azərbaycan)", "Английский (English)"])
 st.sidebar.markdown("---")
 
-# 5. Основной интерфейс
 if api_key:
-    st.sidebar.success("✅ Ключ API активирован")
-    
+    st.sidebar.success("✅ Лицензия активна")
     st.markdown("---")
-    object_name = st.text_input("Название или точный адрес объекта:", placeholder="Например: Офис 150 кв.м., БЦ 'Port Baku'")
-    user_input = st.text_area("Детальное описание состояния (дефекты, оборудование, инвентарь):", height=150, 
-                              placeholder="Перечислите все недостатки, состояние потолков, полов, техники...")
     
-    if st.button("Сформировать Официальный Акт"):
-        if object_name and user_input:
-            with st.spinner('ИИ-Аудитор формирует юридический документ...'):
-                
-                prompt = f"""
-Ты — ведущий международный эксперт по техническому и юридическому аудиту недвижимости и коммерческих активов (Senior Asset Auditor).
+    col1, col2 = st.columns([1, 1])
+    with col1:
+        object_name = st.text_input("Название / Адрес объекта:", placeholder="Например: Офисный блок 4A, Port Baku Tower")
+    with col2:
+        audit_type = st.selectbox("Тип аудита:", ["Прием-передача объекта", "Инвентаризация и дефектовка", "Экспресс-оценка для инвестора"])
 
-Твоя задача — на основе кратких данных пользователя сформировать исчерпывающий, профессиональный «ОФИЦИАЛЬНЫЙ АКТ ТЕХНИЧЕСКОГО АУДИТА И ПРИЕМА-ПЕРЕДАЧИ ОБЪЕКТА».
+    user_input = st.text_area("Детальное описание состояния и дефектов:", height=120, 
+                              placeholder="Опишите состояние стен, инженерных сетей, сантехники, мебели...")
+    
+    uploaded_image = st.file_uploader("📷 Прикрепить фото объекта (необязательно):", type=["jpg", "png", "jpeg"])
+    image_obj = None
+    if uploaded_image:
+        image_obj = Image.open(uploaded_image)
+        st.image(image_obj, caption="Загруженное фото дефекта/объекта", use_container_width=True)
+
+    if st.button("🚀 Сформировать Официальный Акт"):
+        if object_name and user_input:
+            with st.spinner('ИИ-Аудитор проводит комплексный анализ и верстку акта...'):
+                
+                full_prompt = f"""
+Ты — Senior Asset Auditor и международный юрист по недвижимости.
+Составь 'ОФИЦИАЛЬНЫЙ АКТ ТЕХНИЧЕСКОГО АУДИТА И ПРИЕМА-ПЕРЕДАЧИ ОБЪЕКТА'.
 
 ДАННЫЕ ОБЪЕКТА:
-- Наименование/Адрес: '{object_name}'
-- Фактическое состояние и вводные: {user_input}
+- Объект: '{object_name}'
+- Тип аудита: {audit_type}
+- Язык документа: {doc_lang}
+- Описание состояния: {user_input}
+{"- Также проанализируй прикрепленное изображение и внеси выявленные на нем визуальные дефекты в дефектовочную ведомость." if uploaded_image else ""}
 
-ОФОРМИ ДОКУМЕНТ СТРОГО ПО СЛЕДУЮЩИМ РАЗДЕЛАМ:
+СТРУКТУРА ДОКУМЕНТА:
+1. Юридическая преамбула (Стороны, Дата, Основания).
+2. Технический паспорт и инвентаризационный список.
+3. Дефектовочная ведомость (Степень критичности: Высокая/Средняя/Низкая + инженерное решение).
+4. Раздел "Юридические риски и разграничение ответственности" (As Is).
+5. Регламент устранения недостатков.
+6. Блок подписей и печатей сторон.
 
-1. ШАПКА И ЮРИДИЧЕСКАЯ ПРЕАМБУЛА
-   - Официальное наименование документа, номер акта, город, дата.
-   - Реквизиты Передающей и Принимающей сторон (шаблоны под заполнение ФИО, Должности, Основания полномочий).
-
-2. ТЕХНИЧЕСКИЙ ПАСПОРТ И ИНВЕНТАРИЗАЦИЯ
-   - Полное описание объекта (категория, площадь, назначение).
-   - Фиксация передаваемых ключей, пультов и карт доступа.
-   - Блок фиксации показаний приборов учета (Электроэнергия, Вода, Хладагенты/Газ).
-
-3. ДЕФЕКТОВОЧНАЯ ВЕДОМОСТЬ (ПОСЕКТОРНЫЙ АНАЛИЗ)
-   Детализируй состояние по категориям (опиши подробно, расширяя данные пользователя до инженерных терминов):
-   - Ограждающие и внутренние конструкции (потолки, стены, напольные покрытия).
-   - Инженерные сети (HVAC/кондиционирование, электрика, розетки, освещение, сантехника).
-   - Специализированное оборудование и мебель.
-   * Для каждого дефекта укажи: Степень критичности (Критическая / Средняя / Низкая) и Рекомендуемое действие.
-
-4. ЮРИДИЧЕСКИЙ АНАЛИЗ И ОЦЕНКА РИСКОВ
-   - Разграничение ответственности за выявленные недостатки.
-   - Фиксация принципа «как есть» (As Is) для известных дефектов (чтобы исключить иски о «скрытых недостатках»).
-   - Ограничение эксплуатации объектов, имеющих критические дефекты.
-
-5. ПОРЯДОК И РЕГЛАМЕНТ УСТРАНЕНИЯ НЕДОСТАТКОВ
-   - Четкие варианты урегулирования (Вариант А: устранение силами передающей стороны; Вариант Б: финансовая компенсация/скидка; Вариант В: принятие с дефектами).
-
-6. РЕКВИЗИТЫ, ПОДПИСИ И ПЕЧАТИ СТОРУН
-   - Графа подписей с местами для печати (М.П.) и комментариями аудитора.
-
-Стиль документа: строго деловой, академический, юридически выверенный. Выдай сразу готовый документ без вводных фраз.
+Стиль: строго академический, юридически выверенный, без вводных приветствий.
 """
                 try:
-                    report_text, used_model = generate_report_safely(api_key, prompt)
+                    report_text, model_used = generate_audit_report(api_key, full_prompt, image_obj)
                     
-                    st.success(f"✅ Акт успешно сформирован (использована модель: {used_model})!")
+                    st.success(f"✅ Акт успешно сформирован (Модель: {model_used})")
                     
-                    with st.expander("📄 Просмотр документа", expanded=True):
+                    with st.expander("📄 Предварительный просмотр документа", expanded=True):
                         st.markdown(report_text)
                     
                     # Генерация PDF
-                    pdf = FPDF()
+                    pdf = ProfessionalPDF()
                     pdf.add_page()
                     pdf.add_font("DejaVu", "", FONT_PATH, uni=True)
-                    pdf.set_font("DejaVu", size=11)
+                    pdf.set_font("DejaVu", size=10)
+                    pdf.set_text_color(30, 30, 30)
                     
                     clean_text = report_text.replace('**', '').replace('*', '-').replace('#', '')
-                    pdf.multi_cell(0, 8, text=clean_text)
+                    pdf.multi_cell(0, 6, text=clean_text)
                     
                     pdf_bytes = pdf.output()
                     
                     st.download_button(
-                        label="⬇️ Скачать документ в формате PDF",
+                        label="⬇️ Скачать официальный PDF-отчет",
                         data=bytes(pdf_bytes),
-                        file_name="Asset_Audit_Report.pdf",
+                        file_name=f"Audit_Report_{object_name[:15]}.pdf",
                         mime="application/pdf"
                     )
                 except Exception as err:
                     if "429" in str(err) or "Quota" in str(err):
-                        st.error("⏳ **Достигнут лимит запросов Google API.** Подождите 30–60 секунд или используйте другой API-ключ.")
+                        st.error("⏳ Достигнут лимит запросов API. Подождите 30 секунд.")
                     else:
-                        st.error(f"❌ Ошибка при генерации: {err}")
+                        st.error(f"❌ Ошибка генерации: {err}")
         else:
-            st.warning("⚠️ Пожалуйста, заполните оба поля: название объекта и его описание.")
+            st.warning("⚠️ Пожалуйста, заполните наименование и описание объекта.")
 else:
-    st.info("👈 Для начала работы введите ваш API ключ в меню слева.")
+    st.info("👈 Для доступа к системе введите ваш API-ключ в левом меню.")
