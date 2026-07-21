@@ -125,7 +125,7 @@ class EnterprisePDF(FPDF):
         self.set_text_color(160, 160, 160)
         self.cell(0, 5, f"{self.company_name.upper()} | AUDIT & COMPLIANCE REPORT", 0, 1, "R")
         self.set_draw_color(212, 175, 55)
-        self.set_linewidth(0.6)
+        self.set_line_width(0.6)  # Исправлено имя метода
         self.line(10, 15, 200, 15)
         self.ln(6)
 
@@ -232,7 +232,7 @@ if api_key:
 3. ДЕФЕКТОВОЧНАЯ ВЕДОМОСТЬ (Покатегорийный разбор: Конструкции, HVAC/Инженерия, Сантехника, Отделка. Для каждого дефекта укажи КРИТИЧНОСТЬ: Высокая/Средняя/Низкая и рекомендации).
 4. ЮРИДИЧЕСКИЙ АНАЛИЗ И ОЦЕНКА РИСКОВ (Фиксация условия "As Is" / "Как есть", ограничение ответственности).
 5. РЕГЛАМЕНТ И СРОКИ УСТРАНЕНИЯ НЕДОСТАТКОВ (Порядок компенсаций и устранения).
-6. РЕКВИЗИАТЫ И ПОДПИСИ СТОРУН (Графы для подписей Передающей, Принимающей сторон и Инспектора: {inspector_name}).
+6. РЕКВИЗИТЫ И ПОДПИСИ СТОРУН (Графы для подписей Передающей, Принимающей сторон и Инспектора: {inspector_name}).
 
 Стиль: строго официальный, юридически бескомпромиссный. Выдай только готовый документ без вступительных реплик.
 """
@@ -245,17 +245,15 @@ if api_key:
                     with st.expander("📄 Просмотр сформированного документа", expanded=True):
                         st.markdown(report_text)
                     
-                    # ИСПРАВЛЕННАЯ СБОРКА PDF
+                    # Сборка PDF
                     font_file = get_validated_font()
                     use_dejavu = font_file is not None
                     
                     pdf = EnterprisePDF(company_name=company_name, use_dejavu=use_dejavu)
                     
-                    # 1. СНАЧАЛА РЕГИСТРИРУЕМ ШРИФТ
                     if use_dejavu:
                         pdf.add_font("DejaVu", "", font_file)
                     
-                    # 2. СЕЙЧАС ДОБАВЛЯЕМ СТРАНИЦУ (теперь header() работает корректно)
                     pdf.add_page()
                     
                     if use_dejavu:
