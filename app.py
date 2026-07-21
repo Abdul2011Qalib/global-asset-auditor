@@ -232,7 +232,23 @@ with tab_archive:
         st.info("У вас пока нет сохраненных отчетов в облаке.")
 
 with tab_billing:
-    st.subheader("💳 Тарифные планы и монетизация")
+    st.subheader("💳 Тарифные планы и оплата через Leobank")
+    
+    st.markdown("""
+    > **Как оплатить подписку:**
+    > 1. Переведите сумму выбранного тарифа на карту **Leobank** по реквизитам ниже.
+    > 2. В назначении платежа или в сообщении укажите ваш логин (**`{username}`**).
+    > 3. После перевода нажмите кнопку активации тарифа, и мы подтвердим зачисление.
+    """.format(username=st.session_state.username))
+
+    # Информационный блок с реквизитами Leobank
+    st.info("""
+    🦁 **Реквизиты Leobank для оплаты:**
+    * **Номер карты:** `4098 5844 9895 1357` *(Замените на свой реальный номер карты)*
+    * **Получатель:** Sabit Fetizade
+    * **Валюта:** AZN (Манат)
+    """)
+
     col1, col2, col3 = st.columns(3)
 
     with col1:
@@ -244,19 +260,19 @@ with tab_billing:
     with col2:
         st.markdown("### 🟡 Профессиональный (PRO)")
         st.markdown("- Безлимитные официальные PDF\n- Без водяных знаков\n- Приоритетная поддержка\n- **49 AZN / месяц**")
-        if st.button("🚀 Выбрать PRO", type="primary", key="pro_btn"):
+        if st.button("🚀 Запросить PRO (после оплаты)", type="primary", key="pro_btn"):
             with engine.begin() as conn:
                 conn.execute(sqlalchemy.text("UPDATE users SET plan = 'PRO' WHERE username = :u"), {"u": st.session_state.username})
             st.session_state.user_plan = "PRO"
-            st.success("Тариф обновлен до PRO!")
+            st.success("Запрос отправлен! Тариф обновлен до PRO.")
             st.rerun()
 
     with col3:
         st.markdown("### 💎 Корпоративный (Enterprise)")
         st.markdown("- Все функции PRO без ограничений\n- Несколько сотрудников в команде\n- Индивидуальный дизайн и логотип\n- **149 AZN / месяц**")
-        if st.button("🌟 Подключить Enterprise", type="primary", key="ent_btn"):
+        if st.button("🌟 Запросить Enterprise (после оплаты)", type="primary", key="ent_btn"):
             with engine.begin() as conn:
                 conn.execute(sqlalchemy.text("UPDATE users SET plan = 'Enterprise' WHERE username = :u"), {"u": st.session_state.username})
             st.session_state.user_plan = "Enterprise"
-            st.success("Тариф обновлен до Корпоративного!")
+            st.success("Запрос отправлен! Тариф обновлен до Корпоративного.")
             st.rerun()
