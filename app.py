@@ -7,247 +7,292 @@ import time
 from PIL import Image
 
 # ==========================================
-# 1. КОНФИГУРАЦИЯ И ПРЕМИУМ-ДИЗАЙН (CSS)
+# 1. LUXURY ENTERPRISE STYLING (CSS)
 # ==========================================
 st.set_page_config(
-    page_title="Global Asset Auditor | B2B Platform", 
+    page_title="Global Asset Auditor | Enterprise Platform", 
     page_icon="🏢", 
-    layout="centered"
+    layout="wide",
+    initial_sidebar_state="expanded"
 )
 
 st.markdown("""
     <style>
+    /* Скрытие стандартного UI Streamlit */
     #MainMenu {visibility: hidden;}
     footer {visibility: hidden;}
     header {visibility: hidden;}
+    .stDeployButton {display:none;}
     
+    /* Основная цветовая гамма (Obsidian & Gold) */
     .stApp {
-        background-color: #0E0E10;
+        background-color: #0B0C0E;
         color: #E2E8F0;
-        font-family: 'Inter', sans-serif;
+        font-family: 'Inter', -apple-system, BlinkMacSystemFont, sans-serif;
     }
     
+    /* Заголовки */
     h1, h2, h3 {
         color: #D4AF37 !important;
         font-weight: 700 !important;
         letter-spacing: -0.5px;
     }
     
-    div[data-testid="stExpander"] {
-        border: 1px solid #2D2D35 !important;
-        background-color: #16161A !important;
-        border-radius: 8px !important;
+    /* Карточки и блоки */
+    .css-card {
+        background: #141519;
+        border: 1px solid #23252D;
+        border-radius: 12px;
+        padding: 24px;
+        margin-bottom: 20px;
+        box-shadow: 0 10px 30px rgba(0,0,0,0.5);
     }
     
+    div[data-testid="stExpander"] {
+        border: 1px solid #23252D !important;
+        background-color: #141519 !important;
+        border-radius: 10px !important;
+    }
+    
+    /* Премиум Кнопки */
     .stButton>button {
-        background: linear-gradient(135deg, #D4AF37 0%, #AA7C11 100%);
-        color: #000000;
-        font-weight: bold;
-        border: none;
-        border-radius: 6px;
-        padding: 12px 24px;
-        transition: all 0.3s ease;
-        box-shadow: 0 4px 15px rgba(212, 175, 55, 0.2);
+        background: linear-gradient(135deg, #E6C200 0%, #B8860B 100%);
+        color: #0A0A0C !important;
+        font-weight: 800 !important;
+        font-size: 16px !important;
+        border: none !important;
+        border-radius: 8px !important;
+        padding: 14px 28px !important;
+        width: 100%;
+        transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1) !important;
+        box-shadow: 0 4px 20px rgba(212, 175, 55, 0.25) !important;
     }
     .stButton>button:hover {
         transform: translateY(-2px);
-        box-shadow: 0 6px 20px rgba(212, 175, 55, 0.4);
-        color: #000000;
+        box-shadow: 0 8px 25px rgba(212, 175, 55, 0.45) !important;
+        background: linear-gradient(135deg, #F0D000 0%, #C5930C 100%);
     }
     
+    /* Поля ввода */
     .stTextInput>div>div>input, .stTextArea>div>div>textarea, .stSelectbox>div>div {
-        background-color: #16161A !important;
+        background-color: #141519 !important;
         color: #FFFFFF !important;
-        border: 1px solid #2D2D35 !important;
-        border-radius: 6px !important;
+        border: 1px solid #2A2C36 !important;
+        border-radius: 8px !important;
     }
     .stTextInput>div>div>input:focus, .stTextArea>div>div>textarea:focus {
         border-color: #D4AF37 !important;
+        box-shadow: 0 0 10px rgba(212, 175, 55, 0.2) !important;
+    }
+    
+    /* Боковая панель */
+    section[data-testid="stSidebar"] {
+        background-color: #0E0F12 !important;
+        border-right: 1px solid #1E2028;
     }
     </style>
 """, unsafe_allow_html=True)
 
 # ==========================================
-# 2. БРОНЕБОЙНАЯ ЗАГРУЗКА И ВАЛИДАЦИЯ ШРИФТА
+# 2. НЕУЯЗВИМАЯ СИСТЕМА ШРИФТОВ ДЛЯ PDF
 # ==========================================
 FONT_PATH = "DejaVuSans.ttf"
 
-def download_unicode_font():
-    """Скачивает заведомо исправный файл шрифта DejaVuSans.ttf."""
+@st.cache_resource
+def get_validated_font():
+    """Многоуровневая загрузка с проверкой сигнатуры бинарных байт."""
     if os.path.exists(FONT_PATH) and os.path.getsize(FONT_PATH) > 100000:
-        return FONT_PATH
-        
+        try:
+            with open(FONT_PATH, "rb") as f:
+                if f.read(4) in [b'\x00\x01\x00\x00', b'OTTO', b'true']:
+                    return FONT_PATH
+        except Exception:
+            pass
+
     urls = [
         "https://cdn.jsdelivr.net/npm/dejavu-fonts-ttf@2.37.0/ttf/DejaVuSans.ttf",
         "https://raw.githubusercontent.com/fpdf2/fpdf2/master/test/fonts/DejaVuSans.ttf",
-        "https://raw.githubusercontent.com/matomo-org/travis-scripts/master/fonts/DejaVuSans.ttf"
+        "https://raw.githubusercontent.com/matomo-org/travis-scripts/master/fonts/DejaVuSans.ttf",
+        "https://raw.githubusercontent.com/google/fonts/main/ofl/dejavusans/DejaVuSans.ttf"
     ]
     
     for url in urls:
         try:
-            res = requests.get(url, timeout=12, allow_redirects=True)
+            res = requests.get(url, timeout=8, headers={"User-Agent": "Mozilla/5.0"})
             if res.status_code == 200 and len(res.content) > 100000:
-                with open(FONT_PATH, "wb") as f:
-                    f.write(res.content)
-                return FONT_PATH
+                if res.content[:4] in [b'\x00\x01\x00\x00', b'OTTO', b'true']:
+                    with open(FONT_PATH, "wb") as f:
+                        f.write(res.content)
+                    return FONT_PATH
         except Exception:
             continue
-            
     return None
 
-# Кастомный класс PDF с официальной версткой
-class ProfessionalPDF(FPDF):
-    def __init__(self, font_available=True):
+class EnterprisePDF(FPDF):
+    def __init__(self, company_name="GLOBAL ASSET AUDITOR", font_file=None):
         super().__init__()
-        self.font_available = font_available
+        self.company_name = company_name
+        self.font_file = font_file
 
     def header(self):
-        if self.font_available:
-            self.set_font("DejaVu", "", 9)
+        if self.font_file:
+            self.set_font("DejaVu", "", 8)
         else:
-            self.set_font("Arial", "B", 9)
+            self.set_font("Helvetica", "B", 8)
             
-        self.set_text_color(150, 150, 150)
-        self.cell(0, 5, "GLOBAL ASSET AUDITOR | OFFICIAL AUDIT REPORT", 0, 1, "R")
+        self.set_text_color(160, 160, 160)
+        self.cell(0, 5, f"{self.company_name.upper()} | AUDIT & COMPLIANCE REPORT", 0, 1, "R")
         self.set_draw_color(212, 175, 55)
-        self.set_linewidth(0.5)
+        self.set_linewidth(0.6)
         self.line(10, 15, 200, 15)
-        self.ln(5)
+        self.ln(6)
 
     def footer(self):
         self.set_y(-15)
-        if self.font_available:
+        if self.font_file:
             self.set_font("DejaVu", "", 8)
         else:
-            self.set_font("Arial", "", 8)
-            
-        self.set_text_color(150, 150, 150)
-        self.cell(0, 10, f"Page {self.page_no()}", 0, 0, "C")
+            self.set_font("Helvetica", "", 8)
+        self.set_text_color(120, 120, 120)
+        self.cell(0, 10, f"Страница {self.page_no()} | Официальный документ", 0, 0, "C")
 
 # ==========================================
-# 3. ИИ-ЯДРО С АВТОПЕРЕКЛЮЧЕНИЕМ И ПОДДЕРЖКОЙ ФОТО
+# 3. ИИ-ЯДРО (GEMINI AUDIT ENGINE)
 # ==========================================
-def generate_audit_report(api_key, prompt, image=None):
+def run_ai_audit(api_key, prompt, image=None):
     genai.configure(api_key=api_key)
     
     try:
         available_models = [m.name for m in genai.list_models() if 'generateContent' in m.supported_generation_methods]
     except Exception as e:
-        raise Exception(f"Ошибка получения моделей: {e}")
+        raise Exception(f"Ошибка соединения с API: {e}")
         
-    preferred_order = ['models/gemini-1.5-flash', 'models/gemini-1.5-pro', 'models/gemini-2.0-flash']
-    candidate_models = [m for m in preferred_order if m in available_models] + [m for m in available_models if m not in preferred_order]
+    preferred_models = ['models/gemini-1.5-flash', 'models/gemini-1.5-pro', 'models/gemini-2.0-flash']
+    candidates = [m for m in preferred_models if m in available_models] + [m for m in available_models if m not in preferred_models]
     
-    last_error = None
-    for model_name in candidate_models:
+    last_err = None
+    for model_name in candidates:
         try:
             model = genai.GenerativeModel(model_name)
-            contents = [prompt, image] if image else [prompt]
-            response = model.generate_content(contents)
+            content = [prompt, image] if image else [prompt]
+            response = model.generate_content(content)
             return response.text, model_name.replace("models/", "")
         except Exception as e:
-            last_error = e
+            last_err = e
             time.sleep(1)
             continue
             
-    raise last_error if last_error else Exception("Все модели недоступны.")
+    raise last_err if last_err else Exception("Не удалось обратиться к ИИ-моделям.")
 
 # ==========================================
-# 4. ИНТЕРФЕЙС ПЛАТФОРМЫ
+# 4. ИНТЕРФЕЙС И ЛОГИКА
 # ==========================================
-st.title("🏢 Global Asset Auditor")
-st.markdown("### Корпоративная система технического и юридического аудита активов")
+st.sidebar.markdown("### 🏢 Auditor Control Panel")
+api_key = st.sidebar.text_input("Google Gemini API Key", type="password", help="Введите ваш ключ Google AI Studio")
 
-st.sidebar.markdown("## ⚙️ Панель управления")
-api_key = st.sidebar.text_input("Введите Google Gemini API Key", type="password")
-doc_lang = st.sidebar.selectbox("Язык итогового документа:", ["Русский", "Азербайджанский (Azərbaycan)", "Английский (English)"])
 st.sidebar.markdown("---")
+st.sidebar.markdown("### ⚙️ Параметры отчета")
+company_name = st.sidebar.text_input("Название вашей компании:", value="Global Asset Solutions")
+inspector_name = st.sidebar.text_input("ФИО Старшего аудитора:", value="Сабит Фатизаде")
+doc_lang = st.sidebar.selectbox("Язык акта:", ["Русский", "Азербайджанский (Azərbaycan)", "Английский (English)"])
+
+# Главный заголовок
+st.title("🏢 Global Asset Auditor")
+st.markdown("##### *Платформа автоматизированного технико-юридического аудита и оценки недвижимости*")
+st.markdown("---")
 
 if api_key:
-    st.sidebar.success("✅ Лицензия активна")
-    st.markdown("---")
+    st.sidebar.success("🔑 API Ключ подключен")
     
-    col1, col2 = st.columns([1, 1])
-    with col1:
-        object_name = st.text_input("Название / Адрес объекта:", placeholder="Например: Офисный блок 4A, Port Baku Tower")
-    with col2:
-        audit_type = st.selectbox("Тип аудита:", ["Прием-передача объекта", "Инвентаризация и дефектовка", "Экспресс-оценка для инвестора"])
-
-    user_input = st.text_area("Детальное описание состояния и дефектов:", height=120, 
-                              placeholder="Опишите состояние стен, инженерных сетей, сантехники, мебели...")
+    col_main1, col_main2 = st.columns([1, 1])
     
-    uploaded_image = st.file_uploader("📷 Прикрепить фото объекта (необязательно):", type=["jpg", "png", "jpeg"])
-    image_obj = None
-    if uploaded_image:
-        image_obj = Image.open(uploaded_image)
-        st.image(image_obj, caption="Загруженное фото дефекта/объекта", use_container_width=True)
+    with col_main1:
+        st.markdown("#### 1. Основные сведения")
+        object_name = st.text_input("Объект / Адрес:", placeholder="например: БЦ 'Port Baku Tower', офис 1402")
+        audit_type = st.selectbox("Цель аудита:", [
+            "Прием-передача объекта недвижимости", 
+            "Плановая инвентаризация и дефектовка", 
+            "Предпродажный экспресс-аудит для инвестора"
+        ])
+        
+    with col_main2:
+        st.markdown("#### 2. Визуальный контроль")
+        uploaded_image = st.file_uploader("Загрузить фото дефекта (Vision AI):", type=["jpg", "png", "jpeg"])
+        image_obj = None
+        if uploaded_image:
+            image_obj = Image.open(uploaded_image)
+            st.image(image_obj, caption="Загруженный снимок для ИИ-анализа", use_container_width=True)
 
-    if st.button("🚀 Сформировать Официальный Акт"):
+    st.markdown("#### 3. Техническое описание и выявленные замечания")
+    user_input = st.text_area("Вводные данные аудитора:", height=130, 
+                              placeholder="Перечислите дефекты стен, инженерных сетей, сантехники, показания счетчиков и передаваемое имущество...")
+
+    if st.button("🚀 Сформировать Комплексный Акт"):
         if object_name and user_input:
-            with st.spinner('ИИ-Аудитор проводит комплексный анализ и верстку акта...'):
+            with st.spinner('ИИ-Аудитор формирует экспертное юридическое заключение...'):
                 
                 full_prompt = f"""
-Ты — Senior Asset Auditor и международный юрист по недвижимости.
-Составь 'ОФИЦИАЛЬНЫЙ АКТ ТЕХНИЧЕСКОГО АУДИТА И ПРИЕМА-ПЕРЕДАЧИ ОБЪЕКТА'.
+Ты — Senior Asset Auditor и международный юрист.
+Составь исчерпывающий 'ОФИЦИАЛЬНЫЙ АКТ ТЕХНИЧЕСКОГО АУДИТА И ПРИЕМА-ПЕРЕДАЧИ ОБЪЕКТА'.
 
-ДАННЫЕ ОБЪЕКТА:
-- Объект: '{object_name}'
-- Тип аудита: {audit_type}
+ИСПОЛНИТЕЛИ И ОБЪЕКТ:
+- Аудиторская компания: '{company_name}'
+- Старший аудитор: '{inspector_name}'
+- Объект аудита: '{object_name}'
+- Категория: {audit_type}
 - Язык документа: {doc_lang}
-- Описание состояния: {user_input}
-{"- Также проанализируй прикрепленное изображение и внеси выявленные на нем визуальные дефекты в дефектовочную ведомость." if uploaded_image else ""}
+- Детальные вводные: {user_input}
+{"- Проанализируй прикрепленное фото, определи дефекты и внеси их в соответствующую секцию." if uploaded_image else ""}
 
-СТРУКТУРА ДОКУМЕНТА:
-1. Юридическая преамбула (Стороны, Дата, Основания).
-2. Технический паспорт и инвентаризационный список.
-3. Дефектовочная ведомость (Степень критичности: Высокая/Средняя/Низкая + инженерное решение).
-4. Раздел "Юридические риски и разграничение ответственности" (As Is).
-5. Регламент устранения недостатков.
-6. Блок подписей и печатей сторон.
+ОБЯЗАТЕЛЬНАЯ СТРУКТУРА ДОКУМЕНТА:
+1. ЮРИДИЧЕСКАЯ ПРЕАМБУЛА (Место, дата, стороны, основание проверки).
+2. ТЕХНИЧЕСКИЙ ПАСПОРТ И ПРИБОРЫ УЧЕТА (Ключи, карты доступа, показания электро/водосчетчиков).
+3. ДЕФЕКТОВОЧНАЯ ВЕДОМОСТЬ (Покатегорийный разбор: Конструкции, HVAC/Инженерия, Сантехника, Отделка. Для каждого дефекта укажи КРИТИЧНОСТЬ: Высокая/Средняя/Низкая и рекомендации).
+4. ЮРИДИЧЕСКИЙ АНАЛИЗ И ОЦЕНКА РИСКОВ (Фиксация условия "As Is" / "Как есть", ограничение ответственности).
+5. РЕГЛАМЕНТ И СРОКИ УСТРАНЕНИЯ НЕДОСТАТКОВ (Порядок компенсаций и устранения).
+6. РЕКВИЗИТЫ И ПОДПИСИ СТОРУН (Графы для подписей Передающей, Принимающей сторон и Инспектора).
 
-Стиль: строго академический, юридически выверенный, без вводных приветствий.
+Стиль: строго официальный, юридически бескомпромиссный. Выдай только готовый документ без вступительных реплик.
 """
                 try:
-                    report_text, model_used = generate_audit_report(api_key, full_prompt, image_obj)
+                    report_text, used_model = run_ai_audit(api_key, full_prompt, image_obj)
                     
-                    st.success(f"✅ Акт успешно сформирован (Модель: {model_used})")
+                    st.success(f"✅ Документ успешно сформирован (Модель: {used_model})")
                     
-                    with st.expander("📄 Предварительный просмотр документа", expanded=True):
+                    # Предпросмотр
+                    with st.expander("📄 Просмотр сформированного документа", expanded=True):
                         st.markdown(report_text)
                     
-                    # Безопасная генерация PDF
-                    font_file = download_unicode_font()
-                    font_ok = font_file is not None
+                    # Генерация PDF
+                    font_file = get_validated_font()
+                    pdf = EnterprisePDF(company_name=company_name, font_file=font_file)
+                    pdf.add_page()
                     
-                    pdf = ProfessionalPDF(font_available=font_ok)
-                    
-                    if font_ok:
+                    if font_file:
                         pdf.add_font("DejaVu", "", font_file, uni=True)
-                        pdf.add_page()
                         pdf.set_font("DejaVu", size=10)
                     else:
-                        pdf.add_page()
-                        pdf.set_font("Arial", size=10)
+                        pdf.set_font("Helvetica", size=10)
                         
                     pdf.set_text_color(30, 30, 30)
                     
                     clean_text = report_text.replace('**', '').replace('*', '-').replace('#', '')
                     pdf.multi_cell(0, 6, text=clean_text)
                     
-                    pdf_bytes = pdf.output()
+                    pdf_data = pdf.output()
                     
                     st.download_button(
-                        label="⬇️ Скачать официальный PDF-отчет",
-                        data=bytes(pdf_bytes),
-                        file_name=f"Audit_Report_{object_name[:15]}.pdf",
+                        label="⬇️ Скачать Официальный PDF-Акт",
+                        data=bytes(pdf_data),
+                        file_name=f"Audit_Act_{object_name[:12].replace(' ', '_')}.pdf",
                         mime="application/pdf"
                     )
                 except Exception as err:
                     if "429" in str(err) or "Quota" in str(err):
-                        st.error("⏳ Достигнут лимит запросов API. Подождите 30 секунд.")
+                        st.error("⏳ **Превышен лимит запросов API.** Подождите 30 секунд или используйте другой ключ.")
                     else:
-                        st.error(f"❌ Ошибка генерации: {err}")
+                        st.error(f"❌ Ошибка системы: {err}")
         else:
-            st.warning("⚠️ Пожалуйста, заполните наименование и описание объекта.")
+            st.warning("⚠️ Пожалуйста, укажите объект и описание состояния.")
 else:
-    st.info("👈 Для доступа к системе введите ваш API-ключ в левом меню.")
+    st.info("👈 Введите ваш Google Gemini API Key в меню слева для активации платформы.")
