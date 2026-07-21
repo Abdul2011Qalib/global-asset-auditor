@@ -18,34 +18,21 @@ st.set_page_config(
 
 st.markdown("""
     <style>
-    /* Скрытие стандартного UI Streamlit */
     #MainMenu {visibility: hidden;}
     footer {visibility: hidden;}
     header {visibility: hidden;}
     .stDeployButton {display:none;}
     
-    /* Основная цветовая гамма (Obsidian & Gold) */
     .stApp {
         background-color: #0B0C0E;
         color: #E2E8F0;
         font-family: 'Inter', -apple-system, BlinkMacSystemFont, sans-serif;
     }
     
-    /* Заголовки */
     h1, h2, h3 {
         color: #D4AF37 !important;
         font-weight: 700 !important;
         letter-spacing: -0.5px;
-    }
-    
-    /* Карточки и блоки */
-    .css-card {
-        background: #141519;
-        border: 1px solid #23252D;
-        border-radius: 12px;
-        padding: 24px;
-        margin-bottom: 20px;
-        box-shadow: 0 10px 30px rgba(0,0,0,0.5);
     }
     
     div[data-testid="stExpander"] {
@@ -54,7 +41,6 @@ st.markdown("""
         border-radius: 10px !important;
     }
     
-    /* Премиум Кнопки */
     .stButton>button {
         background: linear-gradient(135deg, #E6C200 0%, #B8860B 100%);
         color: #0A0A0C !important;
@@ -73,7 +59,6 @@ st.markdown("""
         background: linear-gradient(135deg, #F0D000 0%, #C5930C 100%);
     }
     
-    /* Поля ввода */
     .stTextInput>div>div>input, .stTextArea>div>div>textarea, .stSelectbox>div>div {
         background-color: #141519 !important;
         color: #FFFFFF !important;
@@ -85,7 +70,6 @@ st.markdown("""
         box-shadow: 0 0 10px rgba(212, 175, 55, 0.2) !important;
     }
     
-    /* Боковая панель */
     section[data-testid="stSidebar"] {
         background-color: #0E0F12 !important;
         border-right: 1px solid #1E2028;
@@ -94,13 +78,12 @@ st.markdown("""
 """, unsafe_allow_html=True)
 
 # ==========================================
-# 2. НЕУЯЗВИМАЯ СИСТЕМА ШРИФТОВ ДЛЯ PDF
+# 2. НАДЕЖНАЯ ЗАГРУЗКА И НАСТРОЙКА ШРИФТА
 # ==========================================
 FONT_PATH = "DejaVuSans.ttf"
 
-@st.cache_resource
 def get_validated_font():
-    """Многоуровневая загрузка с проверкой сигнатуры бинарных байт."""
+    """Скачивает шрифт DejaVuSans.ttf с проверкой бинарных сигнатур."""
     if os.path.exists(FONT_PATH) and os.path.getsize(FONT_PATH) > 100000:
         try:
             with open(FONT_PATH, "rb") as f:
@@ -112,13 +95,12 @@ def get_validated_font():
     urls = [
         "https://cdn.jsdelivr.net/npm/dejavu-fonts-ttf@2.37.0/ttf/DejaVuSans.ttf",
         "https://raw.githubusercontent.com/fpdf2/fpdf2/master/test/fonts/DejaVuSans.ttf",
-        "https://raw.githubusercontent.com/matomo-org/travis-scripts/master/fonts/DejaVuSans.ttf",
-        "https://raw.githubusercontent.com/google/fonts/main/ofl/dejavusans/DejaVuSans.ttf"
+        "https://raw.githubusercontent.com/matomo-org/travis-scripts/master/fonts/DejaVuSans.ttf"
     ]
     
     for url in urls:
         try:
-            res = requests.get(url, timeout=8, headers={"User-Agent": "Mozilla/5.0"})
+            res = requests.get(url, timeout=10, headers={"User-Agent": "Mozilla/5.0"})
             if res.status_code == 200 and len(res.content) > 100000:
                 if res.content[:4] in [b'\x00\x01\x00\x00', b'OTTO', b'true']:
                     with open(FONT_PATH, "wb") as f:
@@ -129,13 +111,13 @@ def get_validated_font():
     return None
 
 class EnterprisePDF(FPDF):
-    def __init__(self, company_name="GLOBAL ASSET AUDITOR", font_file=None):
+    def __init__(self, company_name="GLOBAL ASSET AUDITOR", use_dejavu=True):
         super().__init__()
         self.company_name = company_name
-        self.font_file = font_file
+        self.use_dejavu = use_dejavu
 
     def header(self):
-        if self.font_file:
+        if self.use_dejavu:
             self.set_font("DejaVu", "", 8)
         else:
             self.set_font("Helvetica", "B", 8)
@@ -149,7 +131,7 @@ class EnterprisePDF(FPDF):
 
     def footer(self):
         self.set_y(-15)
-        if self.font_file:
+        if self.use_dejavu:
             self.set_font("DejaVu", "", 8)
         else:
             self.set_font("Helvetica", "", 8)
@@ -250,7 +232,7 @@ if api_key:
 3. ДЕФЕКТОВОЧНАЯ ВЕДОМОСТЬ (Покатегорийный разбор: Конструкции, HVAC/Инженерия, Сантехника, Отделка. Для каждого дефекта укажи КРИТИЧНОСТЬ: Высокая/Средняя/Низкая и рекомендации).
 4. ЮРИДИЧЕСКИЙ АНАЛИЗ И ОЦЕНКА РИСКОВ (Фиксация условия "As Is" / "Как есть", ограничение ответственности).
 5. РЕГЛАМЕНТ И СРОКИ УСТРАНЕНИЯ НЕДОСТАТКОВ (Порядок компенсаций и устранения).
-6. РЕКВИЗИТЫ И ПОДПИСИ СТОРУН (Графы для подписей Передающей, Принимающей сторон и Инспектора).
+6. РЕКВИЗИАТЫ И ПОДПИСИ СТОРУН (Графы для подписей Передающей, Принимающей сторон и Инспектора: {inspector_name}).
 
 Стиль: строго официальный, юридически бескомпромиссный. Выдай только готовый документ без вступительных реплик.
 """
@@ -263,19 +245,27 @@ if api_key:
                     with st.expander("📄 Просмотр сформированного документа", expanded=True):
                         st.markdown(report_text)
                     
-                    # Генерация PDF
+                    # ИСПРАВЛЕННАЯ СБОРКА PDF
                     font_file = get_validated_font()
-                    pdf = EnterprisePDF(company_name=company_name, font_file=font_file)
+                    use_dejavu = font_file is not None
+                    
+                    pdf = EnterprisePDF(company_name=company_name, use_dejavu=use_dejavu)
+                    
+                    # 1. СНАЧАЛА РЕГИСТРИРУЕМ ШРИФТ
+                    if use_dejavu:
+                        pdf.add_font("DejaVu", "", font_file)
+                    
+                    # 2. СЕЙЧАС ДОБАВЛЯЕМ СТРАНИЦУ (теперь header() работает корректно)
                     pdf.add_page()
                     
-                    if font_file:
-                        pdf.add_font("DejaVu", "", font_file, uni=True)
+                    if use_dejavu:
                         pdf.set_font("DejaVu", size=10)
                     else:
                         pdf.set_font("Helvetica", size=10)
                         
                     pdf.set_text_color(30, 30, 30)
                     
+                    # Очистка текста от спецсимволов Markdown
                     clean_text = report_text.replace('**', '').replace('*', '-').replace('#', '')
                     pdf.multi_cell(0, 6, text=clean_text)
                     
