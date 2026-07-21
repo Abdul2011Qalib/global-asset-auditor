@@ -1,9 +1,5 @@
 streamlit
-google-generativeai
 fpdf2
-requests
+pandas
 pillow
 python-docx
-qrcode
-pandas
-weasyprint
