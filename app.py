@@ -4,21 +4,19 @@ import pandas as pd
 import sqlalchemy
 from fpdf import FPDF
 
-st.set_page_config(page_title="Global Asset Auditor", page_icon="📋", layout="wide")st.markdown("""
+st.set_page_config(page_title="Global Asset Auditor", page_icon="📋", layout="wide")
+
+# Фирменный премиальный стиль (черный с золотыми акцентами)
+st.markdown("""
 <style>
-    /* Основной фон и шрифт */
     .stApp {
         background-color: #0e1117;
         color: #e0e0e0;
     }
-    
-    /* Стилизация заголовков под золото */
     h1, h2, h3 {
         color: #d4af37 !important;
         font-family: 'Helvetica Neue', sans-serif;
     }
-
-    /* Карточки и контейнеры */
     div.stButton > button {
         background: linear-gradient(135deg, #d4af37 0%, #aa8c2c 100%);
         color: #ffffff;
@@ -26,7 +24,6 @@ st.set_page_config(page_title="Global Asset Auditor", page_icon="📋", layout="
         font-weight: bold;
         border-radius: 6px;
     }
-    
     div.stButton > button:hover {
         background: linear-gradient(135deg, #e6c547, #bc9b35);
         color: #ffffff;
