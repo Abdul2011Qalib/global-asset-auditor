@@ -1,12 +1,11 @@
 import streamlit as st
 import google.generativeai as genai
-from google.api_core.exceptions import ResourceExhausted, NotFound
 from fpdf import FPDF
 import os
 import requests
 import time
 
-# 1. Настройка страницы и премиального дизайна (Gold & Black)
+# 1. Настройка страницы и стильного интерфейса (Gold & Black)
 st.set_page_config(page_title="Global Asset Auditor", page_icon="🏢", layout="centered")
 
 st.markdown("""
@@ -41,7 +40,7 @@ st.markdown("""
 st.title("🏢 Global Asset Auditor")
 st.markdown("### Профессиональная система оценки и юридической фиксации активов")
 
-# 2. Загрузка шрифта для поддержки кириллицы в PDF
+# 2. Безопасная загрузка шрифта для PDF
 FONT_PATH = "DejaVuSans.ttf"
 @st.cache_resource
 def load_font():
@@ -52,47 +51,74 @@ def load_font():
             file.write(response.content)
 load_font()
 
-# 3. Функция генерации с защитой от пустых ошибок
-def generate_report_with_fallback(prompt):
-    candidate_models = ['gemini-1.5-flash', 'gemini-1.5-pro', 'gemini-1.5-flash-8b']
-    last_exception = None
+# 3. Динамическая генерация: запрашиваем реальный список доступных моделей у Google
+def generate_report_safely(api_key, prompt):
+    genai.configure(api_key=api_key)
     
+    # Запрашиваем у сервера Google список всех моделей, поддерживающих generateContent
+    try:
+        available_models = [
+            m.name for m in genai.list_models() 
+            if 'generateContent' in m.supported_generation_methods
+        ]
+    except Exception as e:
+        raise Exception(f"Не удалось получить список моделей: {e}")
+        
+    if not available_models:
+        raise Exception("Для вашего API-ключа не найдено доступных текстовых моделей.")
+
+    # Выставляем приоритет для стандартных стабильных версий
+    preferred_order = [
+        'models/gemini-1.5-flash',
+        'models/gemini-1.5-pro',
+        'models/gemini-2.0-flash',
+        'models/gemini-1.0-pro'
+    ]
+    
+    # Сортируем: сначала рекомендуемые модели (если есть у ключа), затем остальные доступные
+    candidate_models = [m for m in preferred_order if m in available_models]
+    for m in available_models:
+        if m not in candidate_models:
+            candidate_models.append(m)
+            
+    last_error = None
+    
+    # Пробуем по очереди только реально существующие модели
     for model_name in candidate_models:
         try:
             model = genai.GenerativeModel(model_name)
             response = model.generate_content(prompt)
-            return response.text, model_name
+            clean_name = model_name.replace("models/", "")
+            return response.text, clean_name
         except Exception as e:
-            last_exception = e
-            time.sleep(1)
+            last_error = e
+            time.sleep(1) # Небольшая пауза при переключении
             continue
             
-    if last_exception is None:
-        raise RuntimeError("Ни одна из доступных моделей не ответила. Проверьте правильность API ключа.")
-    
-    raise last_exception
+    if last_error:
+        raise last_error
+    else:
+        raise Exception("Не удалось сгенерировать документ ни одной из доступных моделей.")
 
 # 4. Боковая панель
 st.sidebar.markdown("## ⚙️ Настройки системы")
 api_key = st.sidebar.text_input("Введите Google Gemini API Key", type="password")
 st.sidebar.markdown("---")
 
-# 5. Основная логика приложения
+# 5. Основной интерфейс
 if api_key:
-    try:
-        genai.configure(api_key=api_key)
-        st.sidebar.success("✅ Ключ API активирован")
-        
-        st.markdown("---")
-        object_name = st.text_input("Название или точный адрес объекта:", placeholder="Например: Офис 150 кв.м., БЦ 'Port Baku'")
-        user_input = st.text_area("Детальное описание состояния (дефекты, оборудование, инвентарь):", height=150, 
-                                  placeholder="Перечислите все недостатки, состояние потолков, полов, техники...")
-        
-        if st.button("Сформировать Официальный Акт"):
-            if object_name and user_input:
-                with st.spinner('ИИ-Аудитор формирует юридический документ...'):
-                    
-                    prompt = f"""
+    st.sidebar.success("✅ Ключ API активирован")
+    
+    st.markdown("---")
+    object_name = st.text_input("Название или точный адрес объекта:", placeholder="Например: Офис 150 кв.м., БЦ 'Port Baku'")
+    user_input = st.text_area("Детальное описание состояния (дефекты, оборудование, инвентарь):", height=150, 
+                              placeholder="Перечислите все недостатки, состояние потолков, полов, техники...")
+    
+    if st.button("Сформировать Официальный Акт"):
+        if object_name and user_input:
+            with st.spinner('ИИ-Аудитор формирует юридический документ...'):
+                
+                prompt = f"""
 Ты — ведущий международный эксперт по техническому и юридическому аудиту недвижимости и коммерческих активов (Senior Asset Auditor).
 
 Твоя задача — на основе кратких данных пользователя сформировать исчерпывающий, профессиональный «ОФИЦИАЛЬНЫЙ АКТ ТЕХНИЧЕСКОГО АУДИТА И ПРИЕМА-ПЕРЕДАЧИ ОБЪЕКТА».
@@ -132,10 +158,10 @@ if api_key:
 
 Стиль документа: строго деловой, академический, юридически выверенный. Выдай сразу готовый документ без вводных фраз.
 """
+                try:
+                    report_text, used_model = generate_report_safely(api_key, prompt)
                     
-                    report_text, used_model = generate_report_with_fallback(prompt)
-                    
-                    st.success(f"✅ Акт успешно сформирован (модель: {used_model})!")
+                    st.success(f"✅ Акт успешно сформирован (использована модель: {used_model})!")
                     
                     with st.expander("📄 Просмотр документа", expanded=True):
                         st.markdown(report_text)
@@ -146,7 +172,7 @@ if api_key:
                     pdf.add_font("DejaVu", "", FONT_PATH, uni=True)
                     pdf.set_font("DejaVu", size=11)
                     
-                    clean_text = report_text.replace('**', '').replace('*', '-')
+                    clean_text = report_text.replace('**', '').replace('*', '-').replace('#', '')
                     pdf.multi_cell(0, 8, text=clean_text)
                     
                     pdf_bytes = pdf.output()
@@ -157,11 +183,12 @@ if api_key:
                         file_name="Asset_Audit_Report.pdf",
                         mime="application/pdf"
                     )
-            else:
-                st.warning("⚠️ Пожалуйста, заполните оба поля: название объекта и его описание.")
-    except ResourceExhausted:
-        st.error("⏳ **Превышен лимит запросов Google API.** Подождите 30 секунд и повторите попытку.")
-    except Exception as err:
-        st.error(f"❌ Ошибка подключения: {err}")
+                except Exception as err:
+                    if "429" in str(err) or "Quota" in str(err):
+                        st.error("⏳ **Достигнут лимит запросов Google API.** Подождите 30–60 секунд или используйте другой API-ключ.")
+                    else:
+                        st.error(f"❌ Ошибка при генерации: {err}")
+        else:
+            st.warning("⚠️ Пожалуйста, заполните оба поля: название объекта и его описание.")
 else:
     st.info("👈 Для начала работы введите ваш API ключ в меню слева.")
