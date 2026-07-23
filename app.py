@@ -165,7 +165,7 @@ with tab_create:
     ])
     edited_df = st.data_editor(initial_data, num_rows="dynamic", use_container_width=True)
     
-    # ИСПРАВЛЕНИЕ: Обернули результат в float(), чтобы база данных не ругалась на numpy.float64
+    # ИСПРАВЛЕНИЕ 1: Оборачиваем результат в float(), чтобы база данных не ругалась на numpy.float64
     total_cost = float(edited_df["Смета (AZN)"].sum() if not edited_df.empty else 0.0)
     st.metric("Итого смета", f"{total_cost:,.2f} AZN")
 
@@ -173,7 +173,7 @@ with tab_create:
     if st.button("📄 Сформировать и сохранить официальный акт", type="primary"):
         pdf_filename = f"Audit_{act_num}_{st.session_state.username}.pdf"
 
-        # Попытка автоматической загрузки шрифтов DejaVu для кириллицы
+        # ИСПРАВЛЕНИЕ 2: Загрузка шрифтов для кириллицы (если их нет локально)
         font_files = {
             "DejaVuSans.ttf": "https://github.com/dejavu-fonts/dejavu-fonts/raw/master/ttf/DejaVuSans.ttf",
             "DejaVuSans-Bold.ttf": "https://github.com/dejavu-fonts/dejavu-fonts/raw/master/ttf/DejaVuSans-Bold.ttf"
@@ -189,29 +189,20 @@ with tab_create:
         pdf.set_auto_page_break(auto=True, margin=15)
         pdf.add_page()
 
-        f_name_r = "helvetica"
-        f_name_b = "helvetica"
+        # Подключаем шрифты (локальные или скачанные)
+        use_unicode = False
+        try:
+            pdf.add_font("DejaVu", "", "DejaVuSans.ttf", uni=True)
+            pdf.add_font("DejaVuB", "", "DejaVuSans-Bold.ttf", uni=True)
+            f_name_r = "DejaVu"
+            f_name_b = "DejaVuB"
+            use_unicode = True
+        except Exception as e:
+            st.warning("⚠️ Файлы шрифтов (DejaVuSans.ttf) не найдены. Акт будет сформирован транслитом. Загрузите файлы шрифтов в GitHub репозиторий.")
+            f_name_r = "helvetica"
+            f_name_b = "helvetica"
 
-        if os.path.exists("DejaVuSans.ttf"):
-            try:
-                pdf.add_font("DejaVu", "", "DejaVuSans.ttf", uni=True)
-                f_name_r = "DejaVu"
-            except Exception:
-                pass
-
-        if os.path.exists("DejaVuSans-Bold.ttf"):
-            try:
-                pdf.add_font("DejaVuB", "", "DejaVuSans-Bold.ttf", uni=True)
-                f_name_b = "DejaVuB"
-            except Exception:
-                pass
-        
-        if f_name_b == "helvetica" and f_name_r == "DejaVu":
-            f_name_b = "DejaVu"
-
-        use_unicode = (f_name_r != "helvetica")
-
-        # Функция абсолютной защиты от кодировочных ошибок
+        # Функция абсолютной защиты от кодировочных ошибок (на случай сбоя шрифтов)
         def t(text):
             if use_unicode:
                 return str(text)
@@ -220,8 +211,7 @@ with tab_create:
                 'з': 'z', 'и': 'i', 'й': 'y', 'к': 'k', 'л': 'l', 'м': 'm', 'н': 'n', 'о': 'o',
                 'п': 'p', 'р': 'r', 'с': 's', 'т': 't', 'у': 'u', 'ф': 'f', 'х': 'h', 'ц': 'ts',
                 'ч': 'ch', 'ш': 'sh', 'щ': 'shch', 'ъ': '', 'ы': 'y', 'ь': '', 'э': 'e', 'ю': 'yu',
-                'я': 'ya',
-                'А': 'A', 'Б': 'B', 'В': 'V', 'Г': 'G', 'Д': 'D', 'Е': 'E', 'Ё': 'Yo', 'Ж': 'Zh',
+                'я': 'ya', 'А': 'A', 'Б': 'B', 'В': 'V', 'Г': 'G', 'Д': 'D', 'Е': 'E', 'Ё': 'Yo', 'Ж': 'Zh',
                 'З': 'Z', 'И': 'I', 'Й': 'Y', 'К': 'K', 'Л': 'L', 'М': 'M', 'Н': 'N', 'О': 'O',
                 'П': 'P', 'Р': 'R', 'С': 'S', 'Т': 'T', 'У': 'U', 'Ф': 'F', 'Х': 'H', 'Ц': 'Ts',
                 'Ч': 'Ch', 'Ш': 'Sh', 'Щ': 'Shch', 'Ъ': '', 'Ы': 'Y', 'Ь': '', 'Э': 'E', 'Ю': 'Yu',
@@ -322,7 +312,7 @@ with tab_create:
         # Сохранение PDF файла
         pdf.output(pdf_filename)
 
-        # ИСПРАВЛЕНИЕ: Добавлено строгое приведение типов перед сохранением в базу
+        # ИСПРАВЛЕНИЕ 3: Строгое приведение типов перед сохранением в Supabase
         with engine.begin() as conn:
             conn.execute(
                 sqlalchemy.text("INSERT INTO audits (username, act_num, audit_date, object_name, total_cost, pdf_filename) VALUES (:u, :an, :ad, :on, :tc, :pf)"),
@@ -336,11 +326,11 @@ with tab_create:
                 }
             )
 
-        st.success("Акт успешно сформирован в современном стиле и сохранен в облачной базе данных!")
+        st.success("Акт успешно сформирован и сохранен в облачной базе данных!")
 
         with open(pdf_filename, "rb") as f:
             st.download_button(
-                label="📥 Скачать красивый PDF-Акт",
+                label="📥 Скачать официальный PDF-Акт",
                 data=f,
                 file_name=pdf_filename,
                 mime="application/pdf"
