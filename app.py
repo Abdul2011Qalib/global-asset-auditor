@@ -141,7 +141,7 @@ with tab_create:
         object_address = st.text_input("Адрес объекта", value="г. Баку, ул. Низами 1")
         party_trans = st.text_input("Передающая сторона", value="ООО 'ТехноСтрой'")
         party_recv = st.text_input("Принимающая сторона", value="ОАО 'Global Assets'")
-        lead_auditor = st.text_input("Ведущий аудитор", value="Сабит Фетизде")
+        lead_auditor = st.text_input("Ведущий аудитор", value="")
 
     st.subheader("Дефектовочная ведомость")
     initial_data = pd.DataFrame([
@@ -248,9 +248,9 @@ with tab_billing:
         <h3 style="color: #d4af37; margin-top: 0;">🦁 Реквизиты для оплаты</h3>
         <p style="font-size: 16px; color: #ffffff; margin-bottom: 5px;">Номер карты Leobank:</p>
         <p style="font-size: 20px; font-weight: bold; color: #d4af37;">4098 5844 9895 1357</p>
-        <p style="font-size: 13px; color: #e0e0e0; margin-top: 10px;"><i>Укажите ваш логин (<b>{}</b>) при переводе или заполните заявку ниже.</i></p>
+        <p style="font-size: 13px; color: #e0e0e0; margin-top: 10px;"><i>После перевода заполните заявку ниже для активации тарифа.</i></p>
     </div>
-    """.format(st.session_state.username), unsafe_allow_html=True)
+    """, unsafe_allow_html=True)
 
     col1, col2, col3 = st.columns(3)
 
