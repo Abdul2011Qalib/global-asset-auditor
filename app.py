@@ -40,7 +40,7 @@ def init_connection():
 
 engine = init_connection()
 
-# Создание таблиц и автоматическое добавление колонок, если таблица уже существовала
+# Создание таблиц и надежная миграция схемы со всеми колонками
 with engine.begin() as conn:
     conn.execute(sqlalchemy.text("""
         CREATE TABLE IF NOT EXISTS users (
@@ -49,6 +49,7 @@ with engine.begin() as conn:
             plan TEXT DEFAULT 'Free'
         )
     """))
+    
     conn.execute(sqlalchemy.text("""
         CREATE TABLE IF NOT EXISTS audits (
             id SERIAL PRIMARY KEY,
@@ -60,7 +61,8 @@ with engine.begin() as conn:
             pdf_filename TEXT
         )
     """))
-    # Безопасное добавление колонок на случай, если таблица создана ранее
+    
+    # Безопасное добавление недостающих колонок
     conn.execute(sqlalchemy.text("ALTER TABLE audits ADD COLUMN IF NOT EXISTS pdf_filename TEXT;"))
     conn.execute(sqlalchemy.text("ALTER TABLE audits ADD COLUMN IF NOT EXISTS total_cost NUMERIC;"))
     conn.execute(sqlalchemy.text("ALTER TABLE audits ADD COLUMN IF NOT EXISTS object_name TEXT;"))
