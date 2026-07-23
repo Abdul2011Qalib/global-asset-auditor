@@ -158,6 +158,7 @@ with tab_create:
         pdf_filename = f"Audit_{act_num}_{st.session_state.username}.pdf"
 
         pdf = FPDF(orientation="P", unit="mm", format="A4")
+        pdf.set_auto_page_break(auto=True, margin=15)
         pdf.add_page()
 
         font_loaded = False
@@ -174,41 +175,97 @@ with tab_create:
         f_name_b = "DejaVuB" if font_loaded else "helvetica"
         f_name_r = "DejaVu" if font_loaded else "helvetica"
 
-        pdf.set_font(f_name_b, size=14)
-        pdf.cell(0, 10, f"АКТ ТЕХНИЧЕСКОГО АУДИТА № {act_num}", 0, 1, "L")
-
-        pdf.set_font(f_name_r, size=10)
-        pdf.cell(0, 6, f"Дата: {audit_date} | Объект: {object_name} ({object_address})", 0, 1, "L")
-        pdf.ln(5)
-
-        pdf.set_font(f_name_b, size=11)
-        pdf.cell(0, 6, "1. СТОРОНЫ И КОМИССИЯ", 0, 1, "L")
-        pdf.set_font(f_name_r, size=10)
-        pdf.cell(0, 6, f"- Передающая сторона: {party_trans}", 0, 1, "L")
-        pdf.cell(0, 6, f"- Принимающая сторона: {party_recv}", 0, 1, "L")
-        pdf.cell(0, 6, f"- Ведущий аудитор: {lead_auditor}", 0, 1, "L")
-        pdf.ln(5)
-
-        pdf.set_font(f_name_b, size=11)
-        pdf.cell(0, 6, "2. ДЕФЕКТОВОЧНАЯ ВЕДОМОСТЬ", 0, 1, "L")
-        pdf.set_font(f_name_b, size=9)
-        pdf.cell(40, 8, "Категория", 1, 0, "C")
-        pdf.cell(85, 8, "Описание дефекта", 1, 0, "C")
-        pdf.cell(30, 8, "Критичность", 1, 0, "C")
-        pdf.cell(35, 8, "Смета (AZN)", 1, 1, "C")
-
+        # --- СОВРЕМЕННЫЙ ДИЗАЙН PDF ---
+        
+        # 1. Шапка (Хедер документа)
+        pdf.set_fill_color(24, 34, 48)  # Глубокий темно-синий/графитовый цвет
+        pdf.rect(10, 10, 190, 24, style="F")
+        
+        pdf.set_font(f_name_b, size=15)
+        pdf.set_text_color(212, 175, 55)  # Золотой акцент
+        pdf.set_xy(15, 14)
+        pdf.cell(180, 8, "GLOBAL ASSET AUDITOR", 0, 1, "L")
+        
         pdf.set_font(f_name_r, size=9)
+        pdf.set_text_color(220, 220, 220)
+        pdf.set_xy(15, 23)
+        pdf.cell(180, 6, f"ОФИЦИАЛЬНЫЙ АКТ ТЕХНИЧЕСКОГО АУДИТА № {act_num}", 0, 1, "L")
+
+        pdf.ln(16)
+
+        # 2. Блок общих сведений (метаданные с фоном)
+        pdf.set_font(f_name_b, size=11)
+        pdf.set_text_color(24, 34, 48)
+        pdf.cell(0, 8, "1. ОБЩИЕ СВЕДЕНИЯ И СТОРОНЫ", 0, 1, "L")
+        
+        pdf.set_font(f_name_r, size=9)
+        pdf.set_fill_color(245, 247, 250) # Светло-серый современный фон
+        pdf.set_text_color(50, 50, 50)
+        
+        start_y = pdf.get_y()
+        pdf.rect(10, start_y, 190, 32, style="F")
+        
+        pdf.set_xy(15, start_y + 4)
+        pdf.cell(90, 6, f"Дата аудита: {audit_date}", 0, 0, "L")
+        pdf.cell(90, 6, f"Передающая сторона: {party_trans}", 0, 1, "L")
+        
+        pdf.set_x(15)
+        pdf.cell(90, 6, f"Объект: {object_name}", 0, 0, "L")
+        pdf.cell(90, 6, f"Принимающая сторона: {party_recv}", 0, 1, "L")
+        
+        pdf.set_x(15)
+        pdf.cell(90, 6, f"Адрес: {object_address}", 0, 0, "L")
+        pdf.cell(90, 6, f"Ведущий аудитор: {lead_auditor if lead_auditor else 'Не указан'}", 0, 1, "L")
+        
+        pdf.ln(12)
+
+        # 3. Дефектовочная ведомость (Таблица)
+        pdf.set_font(f_name_b, size=11)
+        pdf.set_text_color(24, 34, 48)
+        pdf.cell(0, 8, "2. ДЕФЕКТОВОЧНАЯ ВЕДОМОСТЬ И СМЕТА", 0, 1, "L")
+        
+        # Шапка таблицы
+        pdf.set_fill_color(24, 34, 48)
+        pdf.set_text_color(255, 255, 255)
+        pdf.set_font(f_name_b, size=9)
+        
+        col_widths = [35, 90, 30, 35] # Сумма = 190
+        pdf.cell(col_widths[0], 8, "Категория", 1, 0, "C", fill=True)
+        pdf.cell(col_widths[1], 8, "Описание дефекта", 1, 0, "C", fill=True)
+        pdf.cell(col_widths[2], 8, "Критичность", 1, 0, "C", fill=True)
+        pdf.cell(col_widths[3], 8, "Смета (AZN)", 1, 1, "C", fill=True)
+
+        # Строки таблицы с чередованием цвета (зебра)
+        pdf.set_font(f_name_r, size=9)
+        pdf.set_text_color(50, 50, 50)
+        
         for index, row in edited_df.iterrows():
-            pdf.cell(40, 8, str(row.get("Категория", "")), 1, 0, "L")
-            pdf.cell(85, 8, str(row.get("Описание", "")), 1, 0, "L")
-            pdf.cell(30, 8, str(row.get("Критичность", "")), 1, 0, "C")
-            pdf.cell(35, 8, f"{float(row.get('Смета (AZN)', 0)):,.2f}", 1, 1, "R")
+            if index % 2 == 0:
+                pdf.set_fill_color(255, 255, 255)
+            else:
+                pdf.set_fill_color(245, 247, 250)
+                
+            pdf.cell(col_widths[0], 8, str(row.get("Категория", "")), 1, 0, "L", fill=True)
+            pdf.cell(col_widths[1], 8, str(row.get("Описание", "")), 1, 0, "L", fill=True)
+            pdf.cell(col_widths[2], 8, str(row.get("Критичность", "")), 1, 0, "C", fill=True)
+            pdf.cell(col_widths[3], 8, f"{float(row.get('Смета (AZN)', 0)):,.2f}", 1, 1, "R", fill=True)
 
-        pdf.set_font(f_name_b, size=10)
-        pdf.cell(155, 9, "ИТОГО СМЕТА:", 1, 0, "R")
-        pdf.cell(35, 9, f"{total_cost:,.2f} AZN", 1, 1, "R")
-        pdf.ln(10)
+        # Выделенная итоговая строка
+        pdf.set_fill_color(212, 175, 55) # Золотистый акцент для итогов
+        pdf.set_text_color(24, 34, 48)
+        pdf.set_font(f_name_b, size=9)
+        pdf.cell(sum(col_widths[:3]), 9, "ИТОГО СМЕТА:", 1, 0, "R", fill=True)
+        pdf.cell(col_widths[3], 9, f"{total_cost:,.2f} AZN", 1, 1, "R", fill=True)
+        
+        pdf.ln(15)
 
+        # 4. Подвал документа
+        pdf.set_font(f_name_r, size=8)
+        pdf.set_text_color(120, 120, 120)
+        pdf.cell(0, 5, "Документ сгенерирован автоматически платформой Global Asset Auditor.", 0, 1, "C")
+        pdf.cell(0, 5, f"Дата формирования: {pd.Timestamp.now().strftime('%d.%m.%Y %H:%M')}", 0, 1, "C")
+
+        # Сохранение PDF файла
         pdf.output(pdf_filename)
 
         with engine.begin() as conn:
@@ -217,11 +274,11 @@ with tab_create:
                 {"u": st.session_state.username, "an": act_num, "ad": str(audit_date), "on": object_name, "tc": total_cost, "pf": pdf_filename}
             )
 
-        st.success("Акт успешно сформирован и надежно сохранен в облачной базе данных!")
+        st.success("Акт успешно сформирован в современном стиле и сохранен в облачной базе данных!")
 
         with open(pdf_filename, "rb") as f:
             st.download_button(
-                label="📥 Скачать готовый PDF-Акт",
+                label="📥 Скачать красивый PDF-Акт",
                 data=f,
                 file_name=pdf_filename,
                 mime="application/pdf"
