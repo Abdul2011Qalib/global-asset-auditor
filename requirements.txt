@@ -1,6 +1,6 @@
 streamlit
 fpdf2
-pillow
+Pillow
 pandas
-sqlalchemy
+SQLAlchemy
 psycopg2-binary
