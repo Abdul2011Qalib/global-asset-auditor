@@ -302,7 +302,7 @@ with tab_create:
         pdf.set_font(f_name_r, size=8)
         pdf.set_text_color(120, 120, 120)
         pdf.cell(0, 5, t("Документ сгенерирован автоматически платформой Global Asset Auditor."), 0, 1, "C")
-        pdf.cell(0, 5, f"Дата формирования: {pd.Timestamp.now().strftime('%d.%m.%Y %H:%M')}", 0, 1, "C")
+        pdf.cell(0, 5, t(f"Дата формирования: {pd.Timestamp.now().strftime('%d.%m.%Y %H:%M')}"), 0, 1, "C")
 
         # Сохранение PDF файла
         pdf.output(pdf_filename)
