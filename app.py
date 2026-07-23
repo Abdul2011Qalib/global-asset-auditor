@@ -245,11 +245,10 @@ with tab_billing:
     
     st.markdown("""
     <div style="background-color: #1a1f2c; padding: 20px; border-radius: 10px; border: 1px solid #d4af37; margin-bottom: 20px;">
-        <h3 style="color: #d4af37; margin-top: 0;">🦁 Реквизиты Leobank для оплаты</h3>
-        <p>1. Переведите сумму нужного тарифа на карту:</p>
-        <p style="font-size: 18px; font-weight: bold; color: #ffffff;">Номер карты: <span style="color: #d4af37;">4098 5844 9895 1357</span></p>
-        <p style="color: #b0b0b0;">Получатель: <b>Sabit Fetizade</b></p>
-        <p style="font-size: 13px; color: #e0e0e0;"><i>⚠️ Обязательно укажите ваш логин (<b>{}</b>) или отправьте запрос ниже.</i></p>
+        <h3 style="color: #d4af37; margin-top: 0;">🦁 Реквизиты для оплаты</h3>
+        <p style="font-size: 16px; color: #ffffff; margin-bottom: 5px;">Номер карты Leobank:</p>
+        <p style="font-size: 20px; font-weight: bold; color: #d4af37;">4098 5844 9895 1357</p>
+        <p style="font-size: 13px; color: #e0e0e0; margin-top: 10px;"><i>Укажите ваш логин (<b>{}</b>) при переводе или заполните заявку ниже.</i></p>
     </div>
     """.format(st.session_state.username), unsafe_allow_html=True)
 
@@ -284,4 +283,4 @@ with tab_billing:
                     sqlalchemy.text("INSERT INTO payment_requests (username, plan, note, status) VALUES (:u, :p, :n, 'Ожидает')"),
                     {"u": st.session_state.username, "p": plan_name, "n": payment_note}
                 )
-            st.success("Запрос успешно отправлен! Как только платеж поступит на карту Leobank, ваш тариф будет активирован.")
+            st.success("Запрос успешно отправлен! Как только перевод поступит, ваш тариф будет активирован.")
