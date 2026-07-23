@@ -59,6 +59,15 @@ with engine.begin() as conn:
             pdf_filename TEXT
         )
     """))
+    conn.execute(sqlalchemy.text("""
+        CREATE TABLE IF NOT EXISTS payment_requests (
+            id SERIAL PRIMARY KEY,
+            username TEXT,
+            plan TEXT,
+            note TEXT,
+            status TEXT DEFAULT 'Ожидает'
+        )
+    """))
 
 # Инициализация состояния сессии
 if "logged_in" not in st.session_state:
@@ -234,13 +243,13 @@ with tab_archive:
 with tab_billing:
     st.subheader("💳 Тарифные планы и оплата")
     
-    # Блок с реквизитами для перевода
     st.markdown("""
     <div style="background-color: #1a1f2c; padding: 20px; border-radius: 10px; border: 1px solid #d4af37; margin-bottom: 20px;">
-        <h3 style="color: #d4af37; margin-top: 0;">🦁 Реквизиты для перевода</h3>
-        <p>Для активации тарифа переведите нужную сумму на карту:</p>
+        <h3 style="color: #d4af37; margin-top: 0;">🦁 Реквизиты Leobank для оплаты</h3>
+        <p>1. Переведите сумму нужного тарифа на карту:</p>
         <p style="font-size: 18px; font-weight: bold; color: #ffffff;">Номер карты: <span style="color: #d4af37;">4098 5844 9895 1357</span></p>
-        <p style="font-size: 13px; color: #e0e0e0;"><i>⚠️ В сообщении к переводу обязательно укажите ваш логин: <b>{}</b></i></p>
+        <p style="color: #b0b0b0;">Получатель: <b>Sabit Fetizade</b></p>
+        <p style="font-size: 13px; color: #e0e0e0;"><i>⚠️ Обязательно укажите ваш логин (<b>{}</b>) или отправьте запрос ниже.</i></p>
     </div>
     """.format(st.session_state.username), unsafe_allow_html=True)
 
@@ -255,9 +264,24 @@ with tab_billing:
     with col2:
         st.markdown("### 🟡 Профессиональный (PRO)")
         st.markdown("- Безлимитные официальные PDF\n- Без водяных знаков\n- Приоритетная поддержка\n- **49 AZN / месяц**")
-        st.markdown("Переведите **49 AZN** по реквизитам выше")
 
     with col3:
         st.markdown("### 💎 Корпоративный (Enterprise)")
         st.markdown("- Все функции PRO без ограничений\n- Несколько сотрудников в команде\n- Индивидуальный дизайн и логотип\n- **149 AZN / месяц**")
-        st.markdown("Переведите **149 AZN** по реквизитам выше")
+
+    st.markdown("---")
+    st.subheader("📝 Подтверждение оплаты")
+    
+    with st.form("payment_form"):
+        selected_plan = st.selectbox("Выберите тариф, который вы оплатили:", ["PRO (49 AZN)", "Enterprise (149 AZN)"])
+        payment_note = st.text_input("Комментарий или номер перевода / последние 4 цифры карты отправителя")
+        submit_payment = st.form_submit_button("📤 Отправить запрос на активацию тарифа", type="primary")
+        
+        if submit_payment:
+            plan_name = "PRO" if "PRO" in selected_plan else "Enterprise"
+            with engine.begin() as conn:
+                conn.execute(
+                    sqlalchemy.text("INSERT INTO payment_requests (username, plan, note, status) VALUES (:u, :p, :n, 'Ожидает')"),
+                    {"u": st.session_state.username, "p": plan_name, "n": payment_note}
+                )
+            st.success("Запрос успешно отправлен! Как только платеж поступит на карту Leobank, ваш тариф будет активирован.")
