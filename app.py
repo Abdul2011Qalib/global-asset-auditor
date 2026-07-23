@@ -165,7 +165,8 @@ with tab_create:
     ])
     edited_df = st.data_editor(initial_data, num_rows="dynamic", use_container_width=True)
     
-    total_cost = edited_df["Смета (AZN)"].sum() if not edited_df.empty else 0.0
+    # ИСПРАВЛЕНИЕ: Обернули результат в float(), чтобы база данных не ругалась на numpy.float64
+    total_cost = float(edited_df["Смета (AZN)"].sum() if not edited_df.empty else 0.0)
     st.metric("Итого смета", f"{total_cost:,.2f} AZN")
 
     st.subheader("Генерация и Сохранение")
@@ -321,10 +322,18 @@ with tab_create:
         # Сохранение PDF файла
         pdf.output(pdf_filename)
 
+        # ИСПРАВЛЕНИЕ: Добавлено строгое приведение типов перед сохранением в базу
         with engine.begin() as conn:
             conn.execute(
                 sqlalchemy.text("INSERT INTO audits (username, act_num, audit_date, object_name, total_cost, pdf_filename) VALUES (:u, :an, :ad, :on, :tc, :pf)"),
-                {"u": st.session_state.username, "an": act_num, "ad": str(audit_date), "on": object_name, "tc": total_cost, "pf": pdf_filename}
+                {
+                    "u": str(st.session_state.username), 
+                    "an": str(act_num), 
+                    "ad": str(audit_date), 
+                    "on": str(object_name), 
+                    "tc": float(total_cost), 
+                    "pf": str(pdf_filename)
+                }
             )
 
         st.success("Акт успешно сформирован в современном стиле и сохранен в облачной базе данных!")
