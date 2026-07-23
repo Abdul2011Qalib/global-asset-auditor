@@ -158,7 +158,7 @@ with tab_create:
     if st.button("📄 Сформировать и сохранить официальный акт", type="primary"):
         pdf_filename = f"Audit_{act_num}_{st.session_state.username}.pdf"
 
-        # Автоматическая загрузка шрифтов DejaVu для полноценной поддержки кириллицы в облаке
+        # Попытка автоматической загрузки шрифтов DejaVu для кириллицы
         font_files = {
             "DejaVuSans.ttf": "https://github.com/dejavu-fonts/dejavu-fonts/raw/master/ttf/DejaVuSans.ttf",
             "DejaVuSans-Bold.ttf": "https://github.com/dejavu-fonts/dejavu-fonts/raw/master/ttf/DejaVuSans-Bold.ttf"
@@ -174,7 +174,6 @@ with tab_create:
         pdf.set_auto_page_break(auto=True, margin=15)
         pdf.add_page()
 
-        # Регистрация шрифтов в FPDF
         f_name_r = "helvetica"
         f_name_b = "helvetica"
 
@@ -192,9 +191,28 @@ with tab_create:
             except Exception:
                 pass
         
-        # Если жирный шрифт не подключился, используем обычный DejaVu как универсальный
         if f_name_b == "helvetica" and f_name_r == "DejaVu":
             f_name_b = "DejaVu"
+
+        use_unicode = (f_name_r != "helvetica")
+
+        # Функция абсолютной защиты от кодировочных ошибок
+        def t(text):
+            if use_unicode:
+                return str(text)
+            rus_to_lat = {
+                'а': 'a', 'б': 'b', 'в': 'v', 'г': 'g', 'д': 'd', 'е': 'e', 'ё': 'yo', 'ж': 'zh',
+                'з': 'z', 'и': 'i', 'й': 'y', 'к': 'k', 'л': 'l', 'м': 'm', 'н': 'n', 'о': 'o',
+                'п': 'p', 'р': 'r', 'с': 's', 'т': 't', 'у': 'u', 'ф': 'f', 'х': 'h', 'ц': 'ts',
+                'ч': 'ch', 'ш': 'sh', 'щ': 'shch', 'ъ': '', 'ы': 'y', 'ь': '', 'э': 'e', 'ю': 'yu',
+                'я': 'ya',
+                'А': 'A', 'Б': 'B', 'В': 'V', 'Г': 'G', 'Д': 'D', 'Е': 'E', 'Ё': 'Yo', 'Ж': 'Zh',
+                'З': 'Z', 'И': 'I', 'Й': 'Y', 'К': 'K', 'Л': 'L', 'М': 'M', 'Н': 'N', 'О': 'O',
+                'П': 'P', 'Р': 'R', 'С': 'S', 'Т': 'T', 'У': 'U', 'Ф': 'F', 'Х': 'H', 'Ц': 'Ts',
+                'Ч': 'Ch', 'Ш': 'Sh', 'Щ': 'Shch', 'Ъ': '', 'Ы': 'Y', 'Ь': '', 'Э': 'E', 'Ю': 'Yu',
+                'Я': 'Ya', '№': 'No.'
+            }
+            return "".join([rus_to_lat.get(c, c) for c in str(text)])
 
         # --- СОВРЕМЕННЫЙ ДИЗАЙН PDF ---
         
@@ -205,19 +223,19 @@ with tab_create:
         pdf.set_font(f_name_b, size=15)
         pdf.set_text_color(212, 175, 55)  # Золотой акцент
         pdf.set_xy(15, 14)
-        pdf.cell(180, 8, "GLOBAL ASSET AUDITOR", 0, 1, "L")
+        pdf.cell(180, 8, t("GLOBAL ASSET AUDITOR"), 0, 1, "L")
         
         pdf.set_font(f_name_r, size=9)
         pdf.set_text_color(220, 220, 220)
         pdf.set_xy(15, 23)
-        pdf.cell(180, 6, f"ОФИЦИАЛЬНЫЙ АКТ ТЕХНИЧЕСКОГО АУДИТА № {act_num}", 0, 1, "L")
+        pdf.cell(180, 6, t(f"ОФИЦИАЛЬНЫЙ АКТ ТЕХНИЧЕСКОГО АУДИТА № {act_num}"), 0, 1, "L")
 
         pdf.ln(16)
 
         # 2. Блок общих сведений (метаданные с фоном)
         pdf.set_font(f_name_b, size=11)
         pdf.set_text_color(24, 34, 48)
-        pdf.cell(0, 8, "1. ОБЩИЕ СВЕДЕНИЯ И СТОРОНЫ", 0, 1, "L")
+        pdf.cell(0, 8, t("1. ОБЩИЕ СВЕДЕНИЯ И СТОРОНЫ"), 0, 1, "L")
         
         pdf.set_font(f_name_r, size=9)
         pdf.set_fill_color(245, 247, 250) # Светло-серый современный фон
@@ -227,23 +245,23 @@ with tab_create:
         pdf.rect(10, start_y, 190, 32, style="F")
         
         pdf.set_xy(15, start_y + 4)
-        pdf.cell(90, 6, f"Дата аудита: {audit_date}", 0, 0, "L")
-        pdf.cell(90, 6, f"Передающая сторона: {party_trans}", 0, 1, "L")
+        pdf.cell(90, 6, t(f"Дата аудита: {audit_date}"), 0, 0, "L")
+        pdf.cell(90, 6, t(f"Передающая сторона: {party_trans}"), 0, 1, "L")
         
         pdf.set_x(15)
-        pdf.cell(90, 6, f"Объект: {object_name}", 0, 0, "L")
-        pdf.cell(90, 6, f"Принимающая сторона: {party_recv}", 0, 1, "L")
+        pdf.cell(90, 6, t(f"Объект: {object_name}"), 0, 0, "L")
+        pdf.cell(90, 6, t(f"Принимающая сторона: {party_recv}"), 0, 1, "L")
         
         pdf.set_x(15)
-        pdf.cell(90, 6, f"Адрес: {object_address}", 0, 0, "L")
-        pdf.cell(90, 6, f"Ведущий аудитор: {lead_auditor if lead_auditor else 'Не указан'}", 0, 1, "L")
+        pdf.cell(90, 6, t(f"Адрес: {object_address}"), 0, 0, "L")
+        pdf.cell(90, 6, t(f"Ведущий аудитор: {lead_auditor if lead_auditor else 'Не указан'}"), 0, 1, "L")
         
         pdf.ln(12)
 
         # 3. Дефектовочная ведомость (Таблица)
         pdf.set_font(f_name_b, size=11)
         pdf.set_text_color(24, 34, 48)
-        pdf.cell(0, 8, "2. ДЕФЕКТОВОЧНАЯ ВЕДОМОСТЬ И СМЕТА", 0, 1, "L")
+        pdf.cell(0, 8, t("2. ДЕФЕКТОВОЧНАЯ ВЕДОМОСТЬ И СМЕТА"), 0, 1, "L")
         
         # Шапка таблицы
         pdf.set_fill_color(24, 34, 48)
@@ -251,10 +269,10 @@ with tab_create:
         pdf.set_font(f_name_b, size=9)
         
         col_widths = [35, 90, 30, 35] # Сумма = 190
-        pdf.cell(col_widths[0], 8, "Категория", 1, 0, "C", fill=True)
-        pdf.cell(col_widths[1], 8, "Описание дефекта", 1, 0, "C", fill=True)
-        pdf.cell(col_widths[2], 8, "Критичность", 1, 0, "C", fill=True)
-        pdf.cell(col_widths[3], 8, "Смета (AZN)", 1, 1, "C", fill=True)
+        pdf.cell(col_widths[0], 8, t("Категория"), 1, 0, "C", fill=True)
+        pdf.cell(col_widths[1], 8, t("Описание дефекта"), 1, 0, "C", fill=True)
+        pdf.cell(col_widths[2], 8, t("Критичность"), 1, 0, "C", fill=True)
+        pdf.cell(col_widths[3], 8, t("Смета (AZN)"), 1, 1, "C", fill=True)
 
         # Строки таблицы с чередованием цвета (зебра)
         pdf.set_font(f_name_r, size=9)
@@ -266,16 +284,16 @@ with tab_create:
             else:
                 pdf.set_fill_color(245, 247, 250)
                 
-            pdf.cell(col_widths[0], 8, str(row.get("Категория", "")), 1, 0, "L", fill=True)
-            pdf.cell(col_widths[1], 8, str(row.get("Описание", "")), 1, 0, "L", fill=True)
-            pdf.cell(col_widths[2], 8, str(row.get("Критичность", "")), 1, 0, "C", fill=True)
+            pdf.cell(col_widths[0], 8, t(str(row.get("Категория", ""))), 1, 0, "L", fill=True)
+            pdf.cell(col_widths[1], 8, t(str(row.get("Описание", ""))), 1, 0, "L", fill=True)
+            pdf.cell(col_widths[2], 8, t(str(row.get("Критичность", ""))), 1, 0, "C", fill=True)
             pdf.cell(col_widths[3], 8, f"{float(row.get('Смета (AZN)', 0)):,.2f}", 1, 1, "R", fill=True)
 
         # Выделенная итоговая строка
         pdf.set_fill_color(212, 175, 55) # Золотистый акцент для итогов
         pdf.set_text_color(24, 34, 48)
         pdf.set_font(f_name_b, size=9)
-        pdf.cell(sum(col_widths[:3]), 9, "ИТОГО СМЕТА:", 1, 0, "R", fill=True)
+        pdf.cell(sum(col_widths[:3]), 9, t("ИТОГО СМЕТА:"), 1, 0, "R", fill=True)
         pdf.cell(col_widths[3], 9, f"{total_cost:,.2f} AZN", 1, 1, "R", fill=True)
         
         pdf.ln(15)
@@ -283,7 +301,7 @@ with tab_create:
         # 4. Подвал документа
         pdf.set_font(f_name_r, size=8)
         pdf.set_text_color(120, 120, 120)
-        pdf.cell(0, 5, "Документ сгенерирован автоматически платформой Global Asset Auditor.", 0, 1, "C")
+        pdf.cell(0, 5, t("Документ сгенерирован автоматически платформой Global Asset Auditor."), 0, 1, "C")
         pdf.cell(0, 5, f"Дата формирования: {pd.Timestamp.now().strftime('%d.%m.%Y %H:%M')}", 0, 1, "C")
 
         # Сохранение PDF файла
