@@ -40,7 +40,7 @@ def init_connection():
 
 engine = init_connection()
 
-# Создание таблиц при первом запуске, если они еще не существуют
+# Создание таблиц и автоматическое добавление колонок, если таблица уже существовала
 with engine.begin() as conn:
     conn.execute(sqlalchemy.text("""
         CREATE TABLE IF NOT EXISTS users (
@@ -60,6 +60,14 @@ with engine.begin() as conn:
             pdf_filename TEXT
         )
     """))
+    # Безопасное добавление колонок на случай, если таблица создана ранее
+    conn.execute(sqlalchemy.text("ALTER TABLE audits ADD COLUMN IF NOT EXISTS pdf_filename TEXT;"))
+    conn.execute(sqlalchemy.text("ALTER TABLE audits ADD COLUMN IF NOT EXISTS total_cost NUMERIC;"))
+    conn.execute(sqlalchemy.text("ALTER TABLE audits ADD COLUMN IF NOT EXISTS object_name TEXT;"))
+    conn.execute(sqlalchemy.text("ALTER TABLE audits ADD COLUMN IF NOT EXISTS audit_date TEXT;"))
+    conn.execute(sqlalchemy.text("ALTER TABLE audits ADD COLUMN IF NOT EXISTS act_num TEXT;"))
+    conn.execute(sqlalchemy.text("ALTER TABLE audits ADD COLUMN IF NOT EXISTS username TEXT;"))
+
     conn.execute(sqlalchemy.text("""
         CREATE TABLE IF NOT EXISTS payment_requests (
             id SERIAL PRIMARY KEY,
@@ -69,6 +77,10 @@ with engine.begin() as conn:
             status TEXT DEFAULT 'Ожидает'
         )
     """))
+    conn.execute(sqlalchemy.text("ALTER TABLE payment_requests ADD COLUMN IF NOT EXISTS status TEXT DEFAULT 'Ожидает';"))
+    conn.execute(sqlalchemy.text("ALTER TABLE payment_requests ADD COLUMN IF NOT EXISTS note TEXT;"))
+    conn.execute(sqlalchemy.text("ALTER TABLE payment_requests ADD COLUMN IF NOT EXISTS plan TEXT;"))
+    conn.execute(sqlalchemy.text("ALTER TABLE payment_requests ADD COLUMN IF NOT EXISTS username TEXT;"))
 
 # Инициализация состояния сессии
 if "logged_in" not in st.session_state:
