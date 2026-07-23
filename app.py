@@ -161,19 +161,31 @@ with tab_create:
         pdf.set_auto_page_break(auto=True, margin=15)
         pdf.add_page()
 
-        font_loaded = False
-        for f_path in ["DejaVuSans.ttf", "/usr/share/fonts/truetype/dejavu/DejaVuSans.ttf"]:
-            if os.path.exists(f_path):
+        # Надежная независимая загрузка шрифтов для поддержки кириллицы
+        f_name_r = "helvetica"
+        f_name_b = "helvetica"
+
+        for font_path in ["DejaVuSans.ttf", "/usr/share/fonts/truetype/dejavu/DejaVuSans.ttf"]:
+            if os.path.exists(font_path):
                 try:
-                    pdf.add_font("DejaVu", "", f_path, uni=True)
-                    pdf.add_font("DejaVuB", "", f_path.replace("Sans.ttf", "Sans-Bold.ttf"), uni=True)
-                    font_loaded = True
+                    pdf.add_font("DejaVu", "", font_path, uni=True)
+                    f_name_r = "DejaVu"
                     break
                 except Exception:
                     pass
 
-        f_name_b = "DejaVuB" if font_loaded else "helvetica"
-        f_name_r = "DejaVu" if font_loaded else "helvetica"
+        for bold_path in ["DejaVuSans-Bold.ttf", "/usr/share/fonts/truetype/dejavu/DejaVuSans-Bold.ttf"]:
+            if os.path.exists(bold_path):
+                try:
+                    pdf.add_font("DejaVuB", "", bold_path, uni=True)
+                    f_name_b = "DejaVuB"
+                    break
+                except Exception:
+                    pass
+        
+        # Если жирный не нашелся отдельно, подстрахуем обычным DejaVu
+        if f_name_b == "helvetica" and f_name_r == "DejaVu":
+            f_name_b = "DejaVu"
 
         # --- СОВРЕМЕННЫЙ ДИЗАЙН PDF ---
         
