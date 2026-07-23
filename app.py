@@ -1,4 +1,5 @@
 import os
+import urllib.request
 import streamlit as st
 import pandas as pd
 import sqlalchemy
@@ -157,33 +158,41 @@ with tab_create:
     if st.button("📄 Сформировать и сохранить официальный акт", type="primary"):
         pdf_filename = f"Audit_{act_num}_{st.session_state.username}.pdf"
 
+        # Автоматическая загрузка шрифтов DejaVu для полноценной поддержки кириллицы в облаке
+        font_files = {
+            "DejaVuSans.ttf": "https://github.com/dejavu-fonts/dejavu-fonts/raw/master/ttf/DejaVuSans.ttf",
+            "DejaVuSans-Bold.ttf": "https://github.com/dejavu-fonts/dejavu-fonts/raw/master/ttf/DejaVuSans-Bold.ttf"
+        }
+        for fname, furl in font_files.items():
+            if not os.path.exists(fname):
+                try:
+                    urllib.request.urlretrieve(furl, fname)
+                except Exception:
+                    pass
+
         pdf = FPDF(orientation="P", unit="mm", format="A4")
         pdf.set_auto_page_break(auto=True, margin=15)
         pdf.add_page()
 
-        # Надежная независимая загрузка шрифтов для поддержки кириллицы
+        # Регистрация шрифтов в FPDF
         f_name_r = "helvetica"
         f_name_b = "helvetica"
 
-        for font_path in ["DejaVuSans.ttf", "/usr/share/fonts/truetype/dejavu/DejaVuSans.ttf"]:
-            if os.path.exists(font_path):
-                try:
-                    pdf.add_font("DejaVu", "", font_path, uni=True)
-                    f_name_r = "DejaVu"
-                    break
-                except Exception:
-                    pass
+        if os.path.exists("DejaVuSans.ttf"):
+            try:
+                pdf.add_font("DejaVu", "", "DejaVuSans.ttf", uni=True)
+                f_name_r = "DejaVu"
+            except Exception:
+                pass
 
-        for bold_path in ["DejaVuSans-Bold.ttf", "/usr/share/fonts/truetype/dejavu/DejaVuSans-Bold.ttf"]:
-            if os.path.exists(bold_path):
-                try:
-                    pdf.add_font("DejaVuB", "", bold_path, uni=True)
-                    f_name_b = "DejaVuB"
-                    break
-                except Exception:
-                    pass
+        if os.path.exists("DejaVuSans-Bold.ttf"):
+            try:
+                pdf.add_font("DejaVuB", "", "DejaVuSans-Bold.ttf", uni=True)
+                f_name_b = "DejaVuB"
+            except Exception:
+                pass
         
-        # Если жирный не нашелся отдельно, подстрахуем обычным DejaVu
+        # Если жирный шрифт не подключился, используем обычный DejaVu как универсальный
         if f_name_b == "helvetica" and f_name_r == "DejaVu":
             f_name_b = "DejaVu"
 
